@@ -109,13 +109,35 @@ export async function POST(req: Request) {
 }
 
 function getBaseUrl(req: Request): string {
-  if (process.env.AUTH_URL) {
-    return process.env.AUTH_URL;
-  }
+  const authUrl = process.env.AUTH_URL;
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+  const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined;
 
-  if (process.env.NEXTAUTH_URL) {
-    return process.env.NEXTAUTH_URL;
-  }
+  const forwardedProto = req.headers.get("x-forwarded-proto") || undefined;
+  const forwardedHost = req.headers.get("x-forwarded-host") || undefined;
+  const host = req.headers.get("host") || undefined;
+
+  const requestBaseUrl =
+    forwardedHost && forwardedProto
+      ? `${forwardedProto}://${forwardedHost}`
+      : host
+      ? `${host.includes("localhost") ? "http" : "https"}://${host}`
+      : undefined;
+
+  // Prefer explicit non-local env URLs when available.
+  if (authUrl && !isLocalhostUrl(authUrl)) return authUrl;
+  if (nextAuthUrl && !isLocalhostUrl(nextAuthUrl)) return nextAuthUrl;
+
+  // If env points to localhost but request is already public (Vercel), trust request host.
+  if (requestBaseUrl && !isLocalhostUrl(requestBaseUrl)) return requestBaseUrl;
+
+  // Fall back to Vercel auto domain if present.
+  if (vercelUrl) return vercelUrl;
+
+  // Local/dev fallback chain.
+  if (authUrl) return authUrl;
+  if (nextAuthUrl) return nextAuthUrl;
+  if (requestBaseUrl) return requestBaseUrl;
 
   const url = new URL(req.url);
   return `${url.protocol}//${url.host}`;
@@ -139,6 +161,15 @@ function shouldEnableAutoReturn(baseUrl: string): boolean {
     const parsed = new URL(baseUrl);
     // Keep auto_return for public/secure URLs (typically Vercel/prod).
     return parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isLocalhostUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
   } catch {
     return false;
   }
