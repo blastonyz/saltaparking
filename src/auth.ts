@@ -39,7 +39,7 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, account, user }) {
       if (token?.sub && token?.email) {
-        const profile = await getOrCreateProfile(token.sub, token.email);
+        const profile = await getOrCreateProfile(token.email);
         token.role = profile.role;
         token.plate = profile.plate || undefined;
         token.permisionarioStatus = profile.permisionarioStatus;
@@ -103,14 +103,11 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-type UserProfileDoc = {
-  userId: string;
+type AppUserProfile = {
   email: string;
   role: "admin" | "permisionario" | "usuario";
   plate: string | null;
   permisionarioStatus: "none" | "pending" | "approved";
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 type AuthUserDoc = {
@@ -118,46 +115,40 @@ type AuthUserDoc = {
   role?: "admin" | "permisionario" | "usuario";
   plate?: string | null;
   permisionarioStatus?: "none" | "pending" | "approved";
+  createdAt?: Date;
   updatedAt?: Date;
 };
 
-async function getOrCreateProfile(userId: string, email: string): Promise<UserProfileDoc> {
-  const collection = await getMongoCollection<UserProfileDoc>("user_profiles");
-  const existing = await collection.findOne({ userId });
-
-  if (existing) {
-    await syncRoleFieldsToAuthUser(email, existing);
-    return existing;
-  }
-
+async function getOrCreateProfile(email: string): Promise<AppUserProfile> {
+  const usersCollection = await getMongoCollection<AuthUserDoc>("users");
+  const existing = await usersCollection.findOne({ email });
   const now = new Date();
   const admin = isAdminEmail(email);
-  const profile: UserProfileDoc = {
-    userId,
-    email,
-    role: admin ? "admin" : DEFAULT_ROLE,
-    plate: null,
-    permisionarioStatus: admin ? "approved" : "none",
-    createdAt: now,
-    updatedAt: now,
-  };
 
-  await collection.insertOne(profile);
-  await syncRoleFieldsToAuthUser(email, profile);
-  return profile;
-}
+  const role = existing?.role ?? (admin ? "admin" : DEFAULT_ROLE);
+  const plate = existing?.plate ?? null;
+  const permisionarioStatus = existing?.permisionarioStatus ?? (admin ? "approved" : "none");
 
-async function syncRoleFieldsToAuthUser(email: string, profile: UserProfileDoc) {
-  const usersCollection = await getMongoCollection<AuthUserDoc>("users");
   await usersCollection.updateOne(
     { email },
     {
       $set: {
-        role: profile.role,
-        plate: profile.plate,
-        permisionarioStatus: profile.permisionarioStatus,
-        updatedAt: new Date(),
+        role,
+        plate,
+        permisionarioStatus,
+        updatedAt: now,
       },
-    }
+      $setOnInsert: {
+        createdAt: now,
+      },
+    },
+    { upsert: true }
   );
+
+  return {
+    email,
+    role,
+    plate,
+    permisionarioStatus,
+  };
 }

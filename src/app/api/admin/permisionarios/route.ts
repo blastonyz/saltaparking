@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { ObjectId } from "mongodb";
 import { authOptions } from "@/auth";
 import { getMongoCollection } from "@/lib/mongodb";
 
 type UserProfileDoc = {
-  userId: string;
+  _id: ObjectId;
   email: string;
   role: "admin" | "permisionario" | "usuario";
   plate: string | null;
   permisionarioStatus: "none" | "pending" | "approved";
-  createdAt: Date;
   updatedAt: Date;
 };
 
@@ -31,11 +31,18 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const collection = await getMongoCollection<UserProfileDoc>("user_profiles");
-  const pending = await collection
+  const collection = await getMongoCollection<UserProfileDoc>("users");
+  const pendingDocs = await collection
     .find({ permisionarioStatus: "pending" })
-    .project({ _id: 0, userId: 1, email: 1, plate: 1, permisionarioStatus: 1 })
+    .project({ _id: 1, email: 1, plate: 1, permisionarioStatus: 1 })
     .toArray();
+
+  const pending = pendingDocs.map((doc) => ({
+    userId: doc._id.toHexString(),
+    email: doc.email,
+    plate: doc.plate,
+    permisionarioStatus: doc.permisionarioStatus,
+  }));
 
   return NextResponse.json({ pending });
 }
@@ -51,29 +58,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
 
-  const collection = await getMongoCollection<UserProfileDoc>("user_profiles");
-
-  const result = await collection.findOneAndUpdate(
-    { userId: body.userId },
-    {
-      $set: {
-        role: "permisionario",
-        permisionarioStatus: "approved",
-        updatedAt: new Date(),
-      },
-    },
-    { returnDocument: "after" }
-  );
-
-  const updatedProfile = result.value;
-
-  if (!updatedProfile) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (!ObjectId.isValid(body.userId)) {
+    return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
   }
 
-  const usersCollection = await getMongoCollection<AuthUserDoc>("users");
-  await usersCollection.updateOne(
-    { email: updatedProfile.email },
+  const collection = await getMongoCollection<UserProfileDoc>("users");
+
+  await collection.updateOne(
+    { _id: new ObjectId(body.userId) },
     {
       $set: {
         role: "permisionario",
@@ -82,6 +74,12 @@ export async function POST(req: Request) {
       },
     }
   );
+
+  const updatedProfile = await collection.findOne({ _id: new ObjectId(body.userId) });
+
+  if (!updatedProfile) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -134,12 +134,37 @@ export default function Home() {
         </div>
 
         <div className="mt-6 border-t border-slate-800 pt-5">
-          <Link
-            href="/checkout"
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-emerald-500/40 px-4 font-medium text-emerald-300 transition hover:bg-emerald-500/10"
-          >
-            Ir al checkout de Mercado Pago
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/checkout"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-emerald-500/40 px-4 font-medium text-emerald-300 transition hover:bg-emerald-500/10"
+            >
+              Ir al checkout de Mercado Pago
+            </Link>
+
+            {isAuthenticated && role === "admin" && (
+              <>
+                <Link
+                  href="/admin"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-amber-500/40 px-4 font-medium text-amber-300 transition hover:bg-amber-500/10"
+                >
+                  Panel admin
+                </Link>
+                <Link
+                  href="/admin/permisionarios"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-200 transition hover:bg-slate-800"
+                >
+                  Permisionarios
+                </Link>
+                <Link
+                  href="/admin/usuarios"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-200 transition hover:bg-slate-800"
+                >
+                  Usuarios
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         {isAuthenticated && (

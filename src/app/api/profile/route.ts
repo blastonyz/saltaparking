@@ -5,7 +5,6 @@ import { getMongoCollection } from "@/lib/mongodb";
 import { DEFAULT_ROLE, isAdminEmail, type PermisionarioStatus, type UserRole } from "@/lib/roles";
 
 type UserProfileDoc = {
-  userId: string;
   email: string;
   role: UserRole;
   plate: string | null;
@@ -29,23 +28,23 @@ type UpdateProfileBody = {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !session.user.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const profile = await getOrCreateProfile(session.user.id, session.user.email);
+  const profile = await getOrCreateProfile(session.user.email);
   return NextResponse.json({ profile });
 }
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !session.user.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = (await req.json()) as UpdateProfileBody;
-  const collection = await getMongoCollection<UserProfileDoc>("user_profiles");
-  const profile = await getOrCreateProfile(session.user.id, session.user.email);
+  const collection = await getMongoCollection<UserProfileDoc>("users");
+  const profile = await getOrCreateProfile(session.user.email);
 
   const plate = normalizePlate(body.plate);
   const wantsPermisionario = Boolean(body.requestPermisionario);
@@ -57,17 +56,18 @@ export async function PATCH(req: Request) {
     : profile.permisionarioStatus;
 
   await collection.updateOne(
-    { userId: session.user.id },
+    { email: session.user.email },
     {
       $set: {
         plate,
         permisionarioStatus: nextStatus,
         updatedAt: new Date(),
       },
-    }
+    },
+    { upsert: true }
   );
 
-  const updated = await collection.findOne({ userId: session.user.id });
+  const updated = await collection.findOne({ email: session.user.email });
 
   if (updated) {
     await syncRoleFieldsToAuthUser(updated.email, updated);
@@ -76,9 +76,9 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ profile: updated });
 }
 
-async function getOrCreateProfile(userId: string, email: string): Promise<UserProfileDoc> {
-  const collection = await getMongoCollection<UserProfileDoc>("user_profiles");
-  const existing = await collection.findOne({ userId });
+async function getOrCreateProfile(email: string): Promise<UserProfileDoc> {
+  const collection = await getMongoCollection<UserProfileDoc>("users");
+  const existing = await collection.findOne({ email });
 
   if (existing) {
     return existing;
@@ -87,7 +87,6 @@ async function getOrCreateProfile(userId: string, email: string): Promise<UserPr
   const now = new Date();
   const admin = isAdminEmail(email);
   const profile: UserProfileDoc = {
-    userId,
     email,
     role: admin ? "admin" : DEFAULT_ROLE,
     plate: null,
