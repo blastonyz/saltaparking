@@ -41,10 +41,23 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, account, user }) {
+      console.log("[auth][jwt][incoming]", {
+        sub: token?.sub,
+        email: token?.email,
+        role: token?.role,
+        permisionarioStatus: token?.permisionarioStatus,
+      });
+
       const resolvedEmail = await resolveEmailForToken(token, user);
 
       if (resolvedEmail) {
         const profile = await getOrCreateProfile({ email: resolvedEmail, sub: token.sub });
+        console.log("[auth][jwt][db-profile]", {
+          email: profile.email,
+          role: profile.role,
+          permisionarioStatus: profile.permisionarioStatus,
+          plate: profile.plate,
+        });
         token.email = profile.email;
         token.role = profile.role;
         token.plate = profile.plate || undefined;
@@ -68,8 +81,22 @@ export const authOptions: NextAuthOptions = {
         token?.sub ?? ((user as { id?: string } | undefined)?.id || undefined);
       const resolvedEmail = token?.email ?? session.user?.email;
 
+      console.log("[auth][session][incoming]", {
+        tokenSub: token?.sub,
+        tokenEmail: token?.email,
+        tokenRole: token?.role,
+        tokenPermisionarioStatus: token?.permisionarioStatus,
+        sessionEmail: session.user?.email,
+      });
+
       if (resolvedEmail) {
         const profile = await getOrCreateProfile({ email: resolvedEmail, sub: token?.sub });
+        console.log("[auth][session][db-profile]", {
+          email: profile.email,
+          role: profile.role,
+          permisionarioStatus: profile.permisionarioStatus,
+          plate: profile.plate,
+        });
         token.role = profile.role;
         token.plate = profile.plate || undefined;
         token.permisionarioStatus = profile.permisionarioStatus;
@@ -146,6 +173,17 @@ async function getOrCreateProfile(params: {
       : null;
 
   const existing = byId ?? (await usersCollection.findOne({ email: normalizedEmail }));
+  console.log("[auth][getOrCreateProfile][lookup]", {
+    inputEmail: params.email,
+    normalizedEmail,
+    sub: params.sub,
+    foundById: !!byId,
+    foundExisting: !!existing,
+    existingEmail: existing?.email,
+    existingRole: existing?.role,
+    existingPermisionarioStatus: existing?.permisionarioStatus,
+    existingPlate: existing?.plate,
+  });
   const now = new Date();
   const admin = isAdminEmail(normalizedEmail);
 

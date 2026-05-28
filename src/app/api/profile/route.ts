@@ -28,21 +28,41 @@ type UpdateProfileBody = {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
+  console.log("[api/profile][GET][session]", {
+    email: session?.user?.email,
+    id: session?.user?.id,
+    role: session?.user?.role,
+    permisionarioStatus: session?.user?.permisionarioStatus,
+  });
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const profile = await getOrCreateProfile(session.user.email);
+  console.log("[api/profile][GET][db-profile]", {
+    email: profile.email,
+    role: profile.role,
+    permisionarioStatus: profile.permisionarioStatus,
+    plate: profile.plate,
+    updatedAt: profile.updatedAt,
+  });
   return NextResponse.json({ profile });
 }
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
+  console.log("[api/profile][PATCH][session]", {
+    email: session?.user?.email,
+    id: session?.user?.id,
+    role: session?.user?.role,
+    permisionarioStatus: session?.user?.permisionarioStatus,
+  });
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = (await req.json()) as UpdateProfileBody;
+  console.log("[api/profile][PATCH][body]", body);
   const collection = await getMongoCollection<UserProfileDoc>("users");
   const profile = await getOrCreateProfile(session.user.email);
 
@@ -68,6 +88,13 @@ export async function PATCH(req: Request) {
   );
 
   const updated = await collection.findOne({ email: session.user.email });
+  console.log("[api/profile][PATCH][updated-db-profile]", {
+    email: updated?.email,
+    role: updated?.role,
+    permisionarioStatus: updated?.permisionarioStatus,
+    plate: updated?.plate,
+    updatedAt: updated?.updatedAt,
+  });
 
   if (updated) {
     await syncRoleFieldsToAuthUser(updated.email, updated);

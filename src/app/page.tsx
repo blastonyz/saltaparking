@@ -26,6 +26,24 @@ export default function Home() {
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
 
+  useEffect(() => {
+    console.log("[front][session]", {
+      sessionStatus,
+      email: session?.user?.email,
+      id: session?.user?.id,
+      role: session?.user?.role,
+      permisionarioStatus: session?.user?.permisionarioStatus,
+      plate: session?.user?.plate,
+    });
+  }, [
+    sessionStatus,
+    session?.user?.email,
+    session?.user?.id,
+    session?.user?.role,
+    session?.user?.permisionarioStatus,
+    session?.user?.plate,
+  ]);
+
   const [plateInput, setPlateInput] = useState(session?.user?.plate || "");
   const [message, setMessage] = useState("");
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
