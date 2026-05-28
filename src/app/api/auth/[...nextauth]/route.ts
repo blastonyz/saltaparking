@@ -13,12 +13,18 @@ function withNoStore(response: Response): Response {
 	return response;
 }
 
-export async function GET(request: Request) {
-	const response = await handler(request);
+type NextAuthRouteContext = {
+	params: Promise<{
+		nextauth: string[];
+	}>;
+};
+
+export async function GET(request: Request, context: NextAuthRouteContext) {
+	const response = await handler(request, { params: await context.params });
 	return withNoStore(response);
 }
 
-export async function POST(request: Request) {
-	const response = await handler(request);
+export async function POST(request: Request, context: NextAuthRouteContext) {
+	const response = await handler(request, { params: await context.params });
 	return withNoStore(response);
 }
