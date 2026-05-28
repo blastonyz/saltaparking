@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
 
@@ -23,6 +24,7 @@ type PendingUser = {
 
 export default function Home() {
   const { session, sessionStatus, loginWithGoogle, logout } = useAuth();
+  const router = useRouter();
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
 
@@ -66,6 +68,22 @@ export default function Home() {
     if (!isAuthenticated || role !== "admin") return;
     void fetchPendingPermisionarios();
   }, [isAuthenticated, role]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !role) return;
+
+    if (role === "admin") {
+      router.replace("/admin");
+      return;
+    }
+
+    if (role === "permisionario") {
+      router.replace("/permisionario");
+      return;
+    }
+
+    router.replace("/usuario");
+  }, [isAuthenticated, role, router]);
 
   async function saveProfile(requestPermisionario: boolean) {
     setMessage("");
@@ -163,11 +181,27 @@ export default function Home() {
         <div className="mt-6 border-t border-slate-800 pt-5">
           <div className="flex flex-wrap gap-2">
             <Link
+              href="/usuario"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-cyan-500/40 px-4 font-medium text-cyan-300 transition hover:bg-cyan-500/10"
+            >
+              Mapa de usuario
+            </Link>
+
+            <Link
               href="/checkout"
               className="inline-flex h-11 items-center justify-center rounded-lg border border-emerald-500/40 px-4 font-medium text-emerald-300 transition hover:bg-emerald-500/10"
             >
-              Ir al checkout de Mercado Pago
+              Checkout
             </Link>
+
+            {(session?.user?.role === "permisionario" || session?.user?.role === "admin") && (
+              <Link
+                href="/permisionario"
+                className="inline-flex h-11 items-center justify-center rounded-lg border border-amber-500/40 px-4 font-medium text-amber-300 transition hover:bg-amber-500/10"
+              >
+                Verificacion por patente
+              </Link>
+            )}
 
             {isAuthenticated && session?.user?.role === "admin" && (
               <>
@@ -194,7 +228,7 @@ export default function Home() {
           </div>
         </div>
 
-        {isAuthenticated && (
+        {isAuthenticated && session?.user?.role !== "permisionario" && (
           <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-3">
             <p className="text-sm font-medium text-slate-200">Perfil del conductor</p>
             <label className="flex flex-col gap-1 text-sm text-slate-300">

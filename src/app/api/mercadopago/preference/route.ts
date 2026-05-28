@@ -8,6 +8,24 @@ type CreatePreferenceBody = {
   quantity?: number;
   unitPrice?: number;
   payerEmail?: string;
+  plate?: string;
+  zoneId?: string;
+  durationMinutes?: number;
+};
+
+type ParkingPaymentDoc = {
+  plate: string;
+  zoneId: string | null;
+  status: "pending" | "approved" | "rejected";
+  amount: number;
+  durationMinutes: number;
+  createdAt: Date;
+  expiresAt: Date;
+  externalReference: string;
+  preferenceId: string;
+  payerEmail: string | null;
+  paymentId?: string;
+  paidAt?: Date | null;
 };
 
 export async function POST(req: Request) {
@@ -22,6 +40,9 @@ export async function POST(req: Request) {
     const title = body.title?.trim() || "Estacionamiento medido";
     const quantity = Number(body.quantity ?? 1);
     const unitPrice = Number(body.unitPrice ?? 1000);
+    const durationMinutes = Number(body.durationMinutes ?? 60);
+    const plate = normalizePlate(body.plate);
+    const zoneId = body.zoneId?.trim() || null;
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
       return NextResponse.json({ error: "Cantidad invalida" }, { status: 400 });
@@ -31,7 +52,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Monto invalido" }, { status: 400 });
     }
 
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      return NextResponse.json({ error: "Duracion invalida" }, { status: 400 });
+    }
+
+    if (!plate) {
+      return NextResponse.json({ error: "Patente requerida" }, { status: 400 });
+    }
+
     const preference = new Preference(mpClient);
+    const externalReference = `parkapp-${Date.now()}-${plate}`;
 
     const result = await preference.create({
       body: {
@@ -44,7 +74,7 @@ export async function POST(req: Request) {
             currency_id: "ARS",
           },
         ],
-        external_reference: `parkapp-${Date.now()}`,
+        external_reference: externalReference,
         payer: body.payerEmail ? { email: body.payerEmail } : undefined,
         back_urls: {
           success: successUrl,
@@ -56,6 +86,11 @@ export async function POST(req: Request) {
       },
     });
 
+    const preferenceId = result.id;
+    if (!preferenceId) {
+      throw new Error("Mercado Pago did not return preference id");
+    }
+
     if (isMongoConfigured()) {
       const collection = await getMongoCollection("payment_attempts");
       await collection.insertOne({
@@ -64,17 +99,35 @@ export async function POST(req: Request) {
         title,
         quantity,
         unitPrice,
+        durationMinutes,
+        plate,
+        zoneId,
         payerEmail: body.payerEmail || null,
-        preferenceId: result.id,
-        externalReference: result.external_reference || null,
+        preferenceId,
+        externalReference: externalReference,
         notificationUrl,
         initPoint: result.init_point || null,
         sandboxInitPoint: result.sandbox_init_point || null,
       });
+
+      const parkingPayments = await getMongoCollection<ParkingPaymentDoc>("parking_payments");
+      await parkingPayments.insertOne({
+        plate,
+        zoneId,
+        status: "pending",
+        amount: unitPrice * quantity,
+        durationMinutes,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + durationMinutes * 60 * 1000),
+        externalReference,
+        preferenceId,
+        payerEmail: body.payerEmail || null,
+        paidAt: null,
+      });
     }
 
     return NextResponse.json({
-      preferenceId: result.id,
+      preferenceId,
       initPoint: result.init_point,
       sandboxInitPoint: result.sandbox_init_point,
     });
@@ -106,6 +159,11 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function normalizePlate(value?: string): string {
+  if (!value) return "";
+  return value.replace(/\s+/g, "").toUpperCase();
 }
 
 function getBaseUrl(req: Request): string {

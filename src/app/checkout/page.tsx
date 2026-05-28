@@ -24,6 +24,9 @@ export default function CheckoutPage() {
   const [title, setTitle] = useState("Hora de estacionamiento");
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(1000);
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [plate, setPlate] = useState("");
+  const [zoneId, setZoneId] = useState("");
   const [payerEmail, setPayerEmail] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,7 +57,15 @@ export default function CheckoutPage() {
       const response = await fetch("/api/mercadopago/preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, quantity, unitPrice, payerEmail }),
+        body: JSON.stringify({
+          title,
+          quantity,
+          unitPrice,
+          payerEmail,
+          plate,
+          zoneId,
+          durationMinutes,
+        }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -177,6 +188,26 @@ export default function CheckoutPage() {
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-300">Patente</span>
+            <input
+              value={plate}
+              onChange={(e) => setPlate(e.target.value.toUpperCase())}
+              placeholder="AA123BB"
+              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-300">Zona/cuadra (opcional)</span>
+            <input
+              value={zoneId}
+              onChange={(e) => setZoneId(e.target.value)}
+              placeholder="ZONA-01"
+              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
             <span className="text-slate-300">Cantidad</span>
             <input
               type="number"
@@ -195,6 +226,17 @@ export default function CheckoutPage() {
               step="1"
               value={unitPrice}
               onChange={(e) => setUnitPrice(Number(e.target.value))}
+              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-slate-300">Duracion (minutos)</span>
+            <input
+              type="number"
+              min={1}
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(Number(e.target.value))}
               className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
             />
           </label>
