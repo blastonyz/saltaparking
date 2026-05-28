@@ -187,9 +187,11 @@ async function getOrCreateProfile(params: {
   const now = new Date();
   const admin = isAdminEmail(normalizedEmail);
 
-  const role = existing?.role ?? (admin ? "admin" : DEFAULT_ROLE);
+  const role = admin ? "admin" : existing?.role ?? DEFAULT_ROLE;
   const plate = existing?.plate ?? null;
-  const permisionarioStatus = existing?.permisionarioStatus ?? (admin ? "approved" : "none");
+  const permisionarioStatus = admin
+    ? "approved"
+    : existing?.permisionarioStatus ?? "none";
 
   await usersCollection.updateOne(
     existing?._id ? { _id: existing._id } : { email: existing?.email ?? normalizedEmail },

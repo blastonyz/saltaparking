@@ -106,13 +106,32 @@ export async function PATCH(req: Request) {
 async function getOrCreateProfile(email: string): Promise<UserProfileDoc> {
   const collection = await getMongoCollection<UserProfileDoc>("users");
   const existing = await collection.findOne({ email });
+  const admin = isAdminEmail(email);
 
   if (existing) {
+    if (admin && (existing.role !== "admin" || existing.permisionarioStatus !== "approved")) {
+      await collection.updateOne(
+        { email },
+        {
+          $set: {
+            role: "admin",
+            permisionarioStatus: "approved",
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      const elevated = await collection.findOne({ email });
+      if (elevated) {
+        await syncRoleFieldsToAuthUser(email, elevated);
+        return elevated;
+      }
+    }
+
     return existing;
   }
 
   const now = new Date();
-  const admin = isAdminEmail(email);
   const profile: UserProfileDoc = {
     email,
     role: admin ? "admin" : DEFAULT_ROLE,

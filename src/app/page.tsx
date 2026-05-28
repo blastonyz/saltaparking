@@ -27,6 +27,11 @@ export default function Home() {
   const role = session?.user?.role;
 
   useEffect(() => {
+    if (sessionStatus === "loading") {
+      console.log("[front][session][loading]");
+      return;
+    }
+
     console.log("[front][session]", {
       sessionStatus,
       email: session?.user?.email,
@@ -113,6 +118,9 @@ export default function Home() {
         <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
           <p className="text-sm text-slate-400">Estado de sesion</p>
           <p className="mt-1 text-base font-medium text-slate-100">{sessionStatus}</p>
+          {sessionStatus === "loading" && (
+            <p className="mt-2 text-sm text-slate-400">Resolviendo sesion...</p>
+          )}
           {isAuthenticated && (
             <div className="mt-2 space-y-1 text-sm text-slate-300">
               <p>
