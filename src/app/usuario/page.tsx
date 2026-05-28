@@ -66,6 +66,12 @@ type MapsConfig = {
   hasKey: boolean;
 };
 
+type GeocodeResponse = {
+  formattedAddress: string;
+  lat: number;
+  lng: number;
+};
+
 export default function UsuarioPage() {
   const { sessionStatus, session } = useAuth();
   const [mapsKey, setMapsKey] = useState("");
@@ -75,6 +81,7 @@ export default function UsuarioPage() {
   const [statusMsg, setStatusMsg] = useState("");
   const [addressQuery, setAddressQuery] = useState("");
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapsScriptError, setMapsScriptError] = useState<string>("");
 
   const mapRef = useRef<MapsMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -134,9 +141,16 @@ export default function UsuarioPage() {
           lat: geo.coords.latitude,
           lng: geo.coords.longitude,
         });
+        setStatusMsg("");
       },
-      () => {
-        setStatusMsg("No se pudo obtener tu ubicacion. Puedes buscar direccion manualmente.");
+      (error) => {
+        const reason =
+          error.code === 1
+            ? "Permiso de ubicacion bloqueado"
+            : error.code === 2
+            ? "Ubicacion no disponible"
+            : "Timeout de ubicacion";
+        setStatusMsg(`${reason}. Puedes buscar direccion manualmente.`);
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
@@ -178,25 +192,42 @@ export default function UsuarioPage() {
   }
 
   async function searchAddress() {
-    if (!window.google || !mapRef.current || !addressQuery.trim()) return;
+    if (!addressQuery.trim()) {
+      setStatusMsg("Ingresa una direccion para buscar");
+      return;
+    }
 
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address: addressQuery }, async (results, status) => {
-      if (status !== "OK" || !results || !results[0]) {
-        setStatusMsg("No se encontro la direccion");
-        return;
+    const response = await fetch(
+      `/api/maps/geocode?address=${encodeURIComponent(addressQuery.trim())}`,
+      {
+        cache: "no-store",
       }
+    );
 
-      const location = results[0].geometry.location;
-      const lat = location.lat();
-      const lng = location.lng();
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        providerStatus?: string;
+        providerError?: string | null;
+      };
+      setStatusMsg(
+        `No se pudo geocodificar la direccion (${data.providerStatus || data.error || "error"})`
+      );
+      return;
+    }
 
-      mapRef.current?.setCenter({ lat, lng });
-      mapRef.current?.setZoom(16);
+    const data = (await response.json()) as GeocodeResponse;
+    const lat = data.lat;
+    const lng = data.lng;
 
-      setPosition({ lat, lng });
-      await fetchSpaces(lat, lng);
-    });
+    if (mapRef.current) {
+      mapRef.current.setCenter({ lat, lng });
+      mapRef.current.setZoom(16);
+    }
+
+    setPosition({ lat, lng });
+    setStatusMsg(`Direccion encontrada: ${data.formattedAddress}`);
+    await fetchSpaces(lat, lng);
   }
 
   if (sessionStatus === "loading") {
@@ -218,6 +249,9 @@ export default function UsuarioPage() {
           src={`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=places`}
           strategy="afterInteractive"
           onLoad={() => setMapReady(true)}
+          onError={() => {
+            setMapsScriptError("No se pudo cargar Google Maps JS (revisa restricciones de MAPS_AK)");
+          }}
         />
       )}
 
@@ -264,6 +298,10 @@ export default function UsuarioPage() {
 
         {!!statusMsg && <p className="mt-3 text-sm text-amber-300">{statusMsg}</p>}
         {loadingKey && <p className="mt-3 text-sm text-slate-400">Cargando configuracion de mapa...</p>}
+        {!!mapsScriptError && <p className="mt-2 text-sm text-rose-300">{mapsScriptError}</p>}
+        {!loadingKey && !mapsScriptError && !mapReady && (
+          <p className="mt-2 text-sm text-slate-400">Inicializando SDK de Google Maps...</p>
+        )}
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div ref={mapContainerRef} className="h-[480px] rounded-xl border border-slate-800 bg-slate-950" />

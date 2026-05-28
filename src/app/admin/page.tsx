@@ -68,6 +68,14 @@ export default function AdminPage() {
             <p className="text-base font-semibold text-slate-100">Usuarios</p>
             <p className="mt-1 text-sm text-slate-400">Ver todos los usuarios, roles y estado.</p>
           </Link>
+
+          <Link
+            href="/admin/espacios"
+            className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-cyan-500/60 hover:bg-cyan-500/5"
+          >
+            <p className="text-base font-semibold text-slate-100">Espacios</p>
+            <p className="mt-1 text-sm text-slate-400">Cargar y seedear parking_spaces para el mapa.</p>
+          </Link>
         </div>
 
         <Link
