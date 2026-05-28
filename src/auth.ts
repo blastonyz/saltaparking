@@ -66,6 +66,14 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token, user }) {
       const resolvedSub =
         token?.sub ?? ((user as { id?: string } | undefined)?.id || undefined);
+      const resolvedEmail = token?.email ?? session.user?.email;
+
+      if (resolvedEmail) {
+        const profile = await getOrCreateProfile({ email: resolvedEmail, sub: token?.sub });
+        token.role = profile.role;
+        token.plate = profile.plate || undefined;
+        token.permisionarioStatus = profile.permisionarioStatus;
+      }
 
       if (session.user && resolvedSub) {
         (session.user as { id?: string }).id = resolvedSub;
