@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 type AuthContextValue = {
@@ -15,6 +15,12 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status: sessionStatus, update } = useSession();
+
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      void update();
+    }
+  }, [sessionStatus, update]);
 
   async function loginWithGoogle() {
     await signIn("google");

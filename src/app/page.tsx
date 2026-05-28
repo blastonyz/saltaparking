@@ -24,7 +24,7 @@ type PendingUser = {
 export default function Home() {
   const { session, sessionStatus, loginWithGoogle, logout, refreshSession } = useAuth();
   const isAuthenticated = sessionStatus === "authenticated";
-  const role = session?.user?.role || "usuario";
+  const role = session?.user?.role;
 
   const [plateInput, setPlateInput] = useState(session?.user?.plate || "");
   const [message, setMessage] = useState("");
@@ -101,7 +101,7 @@ export default function Home() {
                 Sesion activa con: <span className="font-semibold">{session?.user?.email}</span>
               </p>
               <p>
-                Rol actual: <span className="font-semibold uppercase">{role}</span>
+                Rol actual: <span className="font-semibold uppercase">{role || "sin-definir"}</span>
               </p>
               <p>
                 Estado permisionario:{" "}
@@ -151,7 +151,7 @@ export default function Home() {
               Ir al checkout de Mercado Pago
             </Link>
 
-            {isAuthenticated && role === "admin" && (
+            {isAuthenticated && session?.user?.role === "admin" && (
               <>
                 <Link
                   href="/admin"
@@ -213,7 +213,7 @@ export default function Home() {
           </div>
         )}
 
-        {isAuthenticated && role === "admin" && (
+        {isAuthenticated && session?.user?.role === "admin" && (
           <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-slate-200">Aprobacion de permisionarios</p>

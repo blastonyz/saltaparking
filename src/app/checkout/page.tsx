@@ -30,6 +30,13 @@ export default function CheckoutPage() {
   const [lastInitPoint, setLastInitPoint] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
 
+  function clearWalletContainer() {
+    const container = document.getElementById("wallet_container");
+    if (container) {
+      container.innerHTML = "";
+    }
+  }
+
   const publicKey = useMemo(
     () => process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? process.env.MP_PUBLIC_KEY ?? "",
     []
@@ -69,10 +76,7 @@ export default function CheckoutPage() {
 
       const mp = new sdk(publicKey, { locale: "es-AR" });
 
-      const container = document.getElementById("wallet_container");
-      if (container) {
-        container.innerHTML = "";
-      }
+      clearWalletContainer();
 
       mp.checkout({
         preference: { id: data.preferenceId },
@@ -104,6 +108,7 @@ export default function CheckoutPage() {
       if (staleForMs > 20000) {
         setLoading(false);
         loadingSinceRef.current = null;
+        clearWalletContainer();
         setStatusMsg("Se recuperó el estado de carga. Puedes intentar nuevamente.");
       }
     }, 1500);
@@ -119,6 +124,7 @@ export default function CheckoutPage() {
       if (staleForMs > 5000) {
         setLoading(false);
         loadingSinceRef.current = null;
+        clearWalletContainer();
         setStatusMsg("Volviste al checkout. Si cancelaste, puedes reintentar el pago.");
       }
     }
@@ -204,6 +210,19 @@ export default function CheckoutPage() {
         </button>
 
         {!!statusMsg && <p className="mt-4 text-sm text-slate-300">{statusMsg}</p>}
+
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(false);
+            loadingSinceRef.current = null;
+            clearWalletContainer();
+            setStatusMsg("Checkout reiniciado. Puedes generar una nueva preferencia.");
+          }}
+          className="mt-3 inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
+        >
+          Reiniciar checkout
+        </button>
 
         <div id="wallet_container" className="mt-6" />
 

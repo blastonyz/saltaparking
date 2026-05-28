@@ -44,7 +44,7 @@ export const authOptions: NextAuthOptions = {
       const resolvedEmail = await resolveEmailForToken(token, user);
 
       if (resolvedEmail) {
-        const profile = await getOrCreateProfile(resolvedEmail);
+        const profile = await getOrCreateProfile({ email: resolvedEmail, sub: token.sub });
         token.email = profile.email;
         token.role = profile.role;
         token.plate = profile.plate || undefined;
@@ -126,11 +126,19 @@ type AuthUserDoc = {
   updatedAt?: Date;
 };
 
-async function getOrCreateProfile(email: string): Promise<AppUserProfile> {
+async function getOrCreateProfile(params: {
+  email: string;
+  sub?: string | null;
+}): Promise<AppUserProfile> {
   const usersCollection = await getMongoCollection<AuthUserDoc>("users");
-  const existing = await usersCollection.findOne({ email });
+  const normalizedEmail = params.email.toLowerCase();
+  const byId =
+    typeof params.sub === "string" && ObjectId.isValid(params.sub)
+      ? await usersCollection.findOne({ _id: new ObjectId(params.sub) })
+      : null;
+
+  const existing = byId ?? (await usersCollection.findOne({ email: normalizedEmail }));
   const now = new Date();
-  const normalizedEmail = email.toLowerCase();
   const admin = isAdminEmail(normalizedEmail);
 
   const role = existing?.role ?? (admin ? "admin" : DEFAULT_ROLE);
@@ -138,7 +146,7 @@ async function getOrCreateProfile(email: string): Promise<AppUserProfile> {
   const permisionarioStatus = existing?.permisionarioStatus ?? (admin ? "approved" : "none");
 
   await usersCollection.updateOne(
-    { email: existing?.email ?? normalizedEmail },
+    existing?._id ? { _id: existing._id } : { email: existing?.email ?? normalizedEmail },
     {
       $set: {
         email: existing?.email ?? normalizedEmail,
