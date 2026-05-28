@@ -23,6 +23,8 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Allow linking by verified email when a user already exists in Mongo.
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   session: {
