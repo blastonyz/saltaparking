@@ -8,12 +8,13 @@ type AuthContextValue = {
   sessionStatus: ReturnType<typeof useSession>["status"];
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus, update } = useSession();
 
   async function loginWithGoogle() {
     await signIn("google");
@@ -23,8 +24,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut();
   }
 
+  async function refreshSession() {
+    await update();
+  }
+
   return (
-    <AuthContext.Provider value={{ session, sessionStatus, loginWithGoogle, logout }}>
+    <AuthContext.Provider
+      value={{ session, sessionStatus, loginWithGoogle, logout, refreshSession }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
+import { ObjectId } from "mongodb";
 import { getMongoClient, getMongoCollection, isMongoConfigured } from "@/lib/mongodb";
 import { DEFAULT_ROLE, isAdminEmail } from "@/lib/roles";
 
@@ -40,8 +41,11 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, account, user }) {
-      if (token?.sub && token?.email) {
-        const profile = await getOrCreateProfile(token.email);
+      const resolvedEmail = await resolveEmailForToken(token, user);
+
+      if (resolvedEmail) {
+        const profile = await getOrCreateProfile(resolvedEmail);
+        token.email = profile.email;
         token.role = profile.role;
         token.plate = profile.plate || undefined;
         token.permisionarioStatus = profile.permisionarioStatus;
@@ -113,6 +117,7 @@ type AppUserProfile = {
 };
 
 type AuthUserDoc = {
+  _id?: ObjectId;
   email?: string;
   role?: "admin" | "permisionario" | "usuario";
   plate?: string | null;
@@ -125,16 +130,18 @@ async function getOrCreateProfile(email: string): Promise<AppUserProfile> {
   const usersCollection = await getMongoCollection<AuthUserDoc>("users");
   const existing = await usersCollection.findOne({ email });
   const now = new Date();
-  const admin = isAdminEmail(email);
+  const normalizedEmail = email.toLowerCase();
+  const admin = isAdminEmail(normalizedEmail);
 
   const role = existing?.role ?? (admin ? "admin" : DEFAULT_ROLE);
   const plate = existing?.plate ?? null;
   const permisionarioStatus = existing?.permisionarioStatus ?? (admin ? "approved" : "none");
 
   await usersCollection.updateOne(
-    { email },
+    { email: existing?.email ?? normalizedEmail },
     {
       $set: {
+        email: existing?.email ?? normalizedEmail,
         role,
         plate,
         permisionarioStatus,
@@ -148,9 +155,35 @@ async function getOrCreateProfile(email: string): Promise<AppUserProfile> {
   );
 
   return {
-    email,
+    email: existing?.email ?? normalizedEmail,
     role,
     plate,
     permisionarioStatus,
   };
+}
+
+async function resolveEmailForToken(
+  token: { sub?: string | null; email?: string | null },
+  user?: { email?: string | null }
+): Promise<string | null> {
+  if (typeof token.email === "string" && token.email) {
+    return token.email;
+  }
+
+  if (typeof user?.email === "string" && user.email) {
+    return user.email;
+  }
+
+  if (typeof token.sub !== "string" || !ObjectId.isValid(token.sub)) {
+    return null;
+  }
+
+  const usersCollection = await getMongoCollection<AuthUserDoc>("users");
+  const existing = await usersCollection.findOne({ _id: new ObjectId(token.sub) });
+
+  if (typeof existing?.email === "string" && existing.email) {
+    return existing.email;
+  }
+
+  return null;
 }

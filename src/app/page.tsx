@@ -22,7 +22,7 @@ type PendingUser = {
 };
 
 export default function Home() {
-  const { session, sessionStatus, loginWithGoogle, logout } = useAuth();
+  const { session, sessionStatus, loginWithGoogle, logout, refreshSession } = useAuth();
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role || "usuario";
 
@@ -130,6 +130,15 @@ export default function Home() {
             className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cerrar sesion
+          </button>
+
+          <button
+            type="button"
+            onClick={() => refreshSession()}
+            disabled={!isAuthenticated}
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-cyan-500/40 px-4 font-medium text-cyan-300 transition hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Refrescar sesion
           </button>
         </div>
 
