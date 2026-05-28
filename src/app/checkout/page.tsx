@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useMemo, useRef, useState } from "react";
+import QRCode from "qrcode";
 
 declare global {
   interface Window {
@@ -31,6 +32,7 @@ export default function CheckoutPage() {
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
 
   function clearWalletContainer() {
@@ -110,6 +112,28 @@ export default function CheckoutPage() {
       loadingSinceRef.current = null;
     }
   }
+
+  useEffect(() => {
+    async function generateQr() {
+      if (!lastInitPoint) {
+        setQrDataUrl("");
+        return;
+      }
+
+      try {
+        const result = await QRCode.toDataURL(lastInitPoint, {
+          width: 260,
+          margin: 1,
+          errorCorrectionLevel: "M",
+        });
+        setQrDataUrl(result);
+      } catch {
+        setQrDataUrl("");
+      }
+    }
+
+    void generateQr();
+  }, [lastInitPoint]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -259,6 +283,8 @@ export default function CheckoutPage() {
             setLoading(false);
             loadingSinceRef.current = null;
             clearWalletContainer();
+            setLastInitPoint("");
+            setQrDataUrl("");
             setStatusMsg("Checkout reiniciado. Puedes generar una nueva preferencia.");
           }}
           className="mt-3 inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
@@ -269,14 +295,58 @@ export default function CheckoutPage() {
         <div id="wallet_container" className="mt-6" />
 
         {lastInitPoint && (
-          <a
-            href={lastInitPoint}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex text-sm text-emerald-300 underline underline-offset-4"
-          >
-            Abrir checkout en nueva pestana
-          </a>
+          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-sm font-medium text-slate-200">QR de pago</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Compartelo para pagar escaneando desde el telefono.
+            </p>
+
+            {qrDataUrl ? (
+              <img
+                src={qrDataUrl}
+                alt="QR de pago"
+                className="mt-3 h-[220px] w-[220px] rounded-md border border-slate-800 bg-white p-2"
+              />
+            ) : (
+              <p className="mt-3 text-xs text-amber-300">No se pudo generar el QR.</p>
+            )}
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={lastInitPoint}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center rounded-md border border-emerald-500/40 px-3 text-xs text-emerald-300"
+              >
+                Abrir checkout
+              </a>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(lastInitPoint);
+                    setStatusMsg("Link de pago copiado al portapapeles.");
+                  } catch {
+                    setStatusMsg("No se pudo copiar el link.");
+                  }
+                }}
+                className="inline-flex h-9 items-center rounded-md border border-slate-700 px-3 text-xs"
+              >
+                Copiar link
+              </button>
+
+              {qrDataUrl && (
+                <a
+                  href={qrDataUrl}
+                  download="pago-qr.png"
+                  className="inline-flex h-9 items-center rounded-md border border-slate-700 px-3 text-xs"
+                >
+                  Descargar QR
+                </a>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>
