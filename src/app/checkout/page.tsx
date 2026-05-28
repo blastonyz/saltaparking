@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -28,6 +28,7 @@ export default function CheckoutPage() {
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
+  const loadingSinceRef = useRef<number | null>(null);
 
   const publicKey = useMemo(
     () => process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? process.env.MP_PUBLIC_KEY ?? "",
@@ -36,14 +37,20 @@ export default function CheckoutPage() {
 
   async function handleCreatePreference() {
     setLoading(true);
+    loadingSinceRef.current = Date.now();
     setStatusMsg("");
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch("/api/mercadopago/preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, quantity, unitPrice, payerEmail }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       const data = (await response.json()) as PreferenceResponse | { error: string };
 
@@ -78,11 +85,58 @@ export default function CheckoutPage() {
       setLastInitPoint(data.sandboxInitPoint || data.initPoint || "");
       setStatusMsg("Preferencia creada. Ya puedes pagar con el boton de Mercado Pago.");
     } catch (error) {
-      setStatusMsg(error instanceof Error ? error.message : "Error inesperado");
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setStatusMsg("La solicitud tardó demasiado. Intenta nuevamente.");
+      } else {
+        setStatusMsg(error instanceof Error ? error.message : "Error inesperado");
+      }
     } finally {
       setLoading(false);
+      loadingSinceRef.current = null;
     }
   }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!loading || !loadingSinceRef.current) return;
+
+      const staleForMs = Date.now() - loadingSinceRef.current;
+      if (staleForMs > 20000) {
+        setLoading(false);
+        loadingSinceRef.current = null;
+        setStatusMsg("Se recuperó el estado de carga. Puedes intentar nuevamente.");
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  useEffect(() => {
+    function recoverIfStale() {
+      if (!loading || !loadingSinceRef.current) return;
+
+      const staleForMs = Date.now() - loadingSinceRef.current;
+      if (staleForMs > 5000) {
+        setLoading(false);
+        loadingSinceRef.current = null;
+        setStatusMsg("Volviste al checkout. Si cancelaste, puedes reintentar el pago.");
+      }
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        recoverIfStale();
+      }
+    }
+
+    window.addEventListener("focus", recoverIfStale);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", recoverIfStale);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [loading]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
