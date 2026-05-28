@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 type AuthContextValue = {
@@ -15,12 +15,22 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status: sessionStatus, update } = useSession();
+  const [refreshedSessionKey, setRefreshedSessionKey] = useState<string | null>(null);
+
+  const currentSessionKey =
+    session?.user?.id || session?.user?.email || (sessionStatus === "authenticated" ? "auth" : null);
 
   useEffect(() => {
-    if (sessionStatus === "authenticated") {
+    if (sessionStatus !== "authenticated") {
+      setRefreshedSessionKey(null);
+      return;
+    }
+
+    if (currentSessionKey && refreshedSessionKey !== currentSessionKey) {
+      setRefreshedSessionKey(currentSessionKey);
       void update();
     }
-  }, [sessionStatus, update]);
+  }, [sessionStatus, currentSessionKey, refreshedSessionKey, update]);
 
   async function loginWithGoogle() {
     await signIn("google");
