@@ -11,6 +11,7 @@ if (process.env.NODE_ENV === "production" && !authSecret) {
 }
 
 export const authOptions: NextAuthOptions = {
+  debug: process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true",
   secret: authSecret,
   adapter: useMongo
     ? MongoDBAdapter(getMongoClient(), {
@@ -24,14 +25,61 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   session: {
-    strategy: useMongo ? "database" : "jwt",
+    strategy: "jwt",
   },
   callbacks: {
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        (session.user as { id?: string }).id = token.sub;
+    async signIn({ user, account }) {
+      console.log("[auth][signIn]", {
+        email: user?.email,
+        provider: account?.provider,
+        type: account?.type,
+      });
+      return true;
+    },
+    async jwt({ token, account, user }) {
+      if (account || user) {
+        console.log("[auth][jwt]", {
+          provider: account?.provider,
+          email: user?.email ?? token?.email,
+          sub: token?.sub,
+        });
       }
+      return token;
+    },
+    async session({ session, token, user }) {
+      const resolvedSub =
+        token?.sub ?? ((user as { id?: string } | undefined)?.id || undefined);
+
+      if (session.user && resolvedSub) {
+        (session.user as { id?: string }).id = resolvedSub;
+      }
+      console.log("[auth][session]", {
+        email: session.user?.email,
+        sub: resolvedSub,
+      });
       return session;
+    },
+  },
+  events: {
+    async signOut(message) {
+      console.log("[auth][signOut]", message);
+    },
+    async session(message) {
+      console.log("[auth][event:session]", {
+        expires: message.session.expires,
+        user: message.session.user?.email,
+      });
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      console.error("[auth][error]", code, metadata);
+    },
+    warn(code) {
+      console.warn("[auth][warn]", code);
+    },
+    debug(code, metadata) {
+      console.debug("[auth][debug]", code, metadata);
     },
   },
 };
