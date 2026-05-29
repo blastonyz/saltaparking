@@ -32,23 +32,45 @@ export async function GET() {
 
   const collection = await getMongoCollection<ParkingSpaceDoc>("parking_spaces");
 
-  const filter = role === "admin" ? {} : { assignedPermisionarioEmail: email };
-  const spaces = await collection
-    .find(filter)
+  let usedFallback = false;
+
+  const baseProjection = {
+    _id: 1,
+    name: 1,
+    address: 1,
+    zoneId: 1,
+    ratePerHour: 1,
+    lat: 1,
+    lng: 1,
+    assignedPermisionarioEmail: 1,
+  };
+
+  let spaces = await collection
+    .find(role === "admin" ? {} : { assignedPermisionarioEmail: email })
     .project({
-      _id: 1,
-      name: 1,
-      address: 1,
-      zoneId: 1,
-      ratePerHour: 1,
-      lat: 1,
-      lng: 1,
-      assignedPermisionarioEmail: 1,
+      ...baseProjection,
     })
     .toArray();
 
+  if (role === "permisionario" && spaces.length === 0) {
+    spaces = await collection
+      .find({
+        $or: [
+          { assignedPermisionarioEmail: null },
+          { assignedPermisionarioEmail: { $exists: false } },
+          { assignedPermisionarioEmail: "" },
+        ],
+      })
+      .project({
+        ...baseProjection,
+      })
+      .toArray();
+    usedFallback = spaces.length > 0;
+  }
+
   return NextResponse.json(
     {
+      usedFallback,
       zones: spaces.map((item) => ({
         id: String(item._id),
         name: item.name || "Zona sin nombre",

@@ -25,6 +25,11 @@ type ZoneRow = {
   ratePerHour: number;
 };
 
+type ZonesResponse = {
+  zones: ZoneRow[];
+  usedFallback?: boolean;
+};
+
 type CashPaymentResponse = {
   ok: boolean;
   plate: string;
@@ -42,6 +47,10 @@ export default function PermisionarioPage() {
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [qrZoneId, setQrZoneId] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [usedFallbackZones, setUsedFallbackZones] = useState(false);
+  const [manualZoneName, setManualZoneName] = useState("Cobro rapido");
+  const [manualZoneId, setManualZoneId] = useState("MANUAL");
+  const [manualRatePerHour, setManualRatePerHour] = useState(1000);
   const [cashHours, setCashHours] = useState(1);
   const [cashZoneId, setCashZoneId] = useState("");
   const [cashAmount, setCashAmount] = useState(0);
@@ -56,8 +65,9 @@ export default function PermisionarioPage() {
     async function loadZones() {
       const response = await fetch("/api/permisionario/zones", { cache: "no-store" });
       if (!response.ok) return;
-      const data = (await response.json()) as { zones: ZoneRow[] };
+      const data = (await response.json()) as ZonesResponse;
       setZones(data.zones);
+      setUsedFallbackZones(Boolean(data.usedFallback));
       if (data.zones[0]) {
         setCashZoneId(data.zones[0].zoneId || "");
         setCashAmount(Math.max(0, Number(data.zones[0].ratePerHour ?? 0)));
@@ -264,6 +274,11 @@ export default function PermisionarioPage() {
           <p className="mt-1 text-xs text-slate-400">
             Genera un QR que abre checkout preconfigurado para una zona/cuadra.
           </p>
+          {usedFallbackZones && (
+            <p className="mt-2 text-xs text-amber-300">
+              No habia zonas asignadas: se cargaron zonas sin asignar como fallback operativo.
+            </p>
+          )}
 
           <ul className="mt-3 space-y-2 text-sm">
             {zones.map((zone) => (
@@ -305,9 +320,50 @@ export default function PermisionarioPage() {
               </li>
             ))}
             {zones.length === 0 && (
-              <li className="text-xs text-slate-400">No hay zonas asignadas para generar QR.</li>
+              <li className="text-xs text-slate-400">No hay zonas cargadas. Usa el generador manual.</li>
             )}
           </ul>
+
+          {zones.length === 0 && (
+            <div className="mt-4 rounded-md border border-slate-800 p-3">
+              <p className="text-xs text-slate-300">Generador manual de QR</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <input
+                  value={manualZoneName}
+                  onChange={(e) => setManualZoneName(e.target.value)}
+                  placeholder="Nombre"
+                  className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-xs"
+                />
+                <input
+                  value={manualZoneId}
+                  onChange={(e) => setManualZoneId(e.target.value)}
+                  placeholder="Zona"
+                  className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-xs"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={manualRatePerHour}
+                  onChange={(e) => setManualRatePerHour(Math.max(1, Number(e.target.value) || 1))}
+                  placeholder="Tarifa/h"
+                  className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-xs"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const baseUrl = window.location.origin;
+                  const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(manualZoneName || "Cobro rapido")}&unitPrice=${manualRatePerHour}&zoneId=${encodeURIComponent(manualZoneId || "MANUAL")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
+                  const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
+                  setQrZoneId("manual");
+                  setQrDataUrl(qr);
+                }}
+                className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
+              >
+                Generar QR manual
+              </button>
+            </div>
+          )}
 
           {qrDataUrl && (
             <div className="mt-4 rounded-md border border-slate-800 p-3">

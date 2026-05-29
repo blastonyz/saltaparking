@@ -224,6 +224,9 @@ export default function UsuarioPage() {
           lng: geo.coords.longitude,
         });
         void fetchSpaces(nextPosition.lat, nextPosition.lng);
+        setTimeout(() => {
+          selectNearestFromPoint(nextPosition.lat, nextPosition.lng, "center");
+        }, 0);
         setStatusMsg("");
       },
       (error) => {
@@ -303,6 +306,27 @@ export default function UsuarioPage() {
     } else {
       setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
     }
+  }
+
+  async function selectFromMapCenter() {
+    const center = mapRef.current?.getCenter();
+    if (!center) {
+      setStatusMsg("Mapa no listo todavia.");
+      return;
+    }
+
+    const lat = center.lat();
+    const lng = center.lng();
+
+    if (spacesRef.current.length === 0) {
+      await fetchSpaces(lat, lng);
+    }
+
+    if (spacesRef.current.length === 0 && position) {
+      await fetchSpaces(position.lat, position.lng);
+    }
+
+    selectNearestFromPoint(lat, lng, "center");
   }
 
   function renderMarkers(list: Space[]) {
@@ -402,6 +426,7 @@ export default function UsuarioPage() {
           setPosition({ lat, lng });
           setStatusMsg(`Direccion encontrada (fallback): ${addressQuery.trim()}`);
           await fetchSpaces(lat, lng);
+          selectNearestFromPoint(lat, lng, "center");
         });
         return;
       }
@@ -424,6 +449,7 @@ export default function UsuarioPage() {
     setPosition({ lat, lng });
     setStatusMsg(`Direccion encontrada: ${data.formattedAddress}`);
     await fetchSpaces(lat, lng);
+    selectNearestFromPoint(lat, lng, "center");
   }
 
   if (sessionStatus === "loading") {
@@ -493,12 +519,7 @@ export default function UsuarioPage() {
           <button
             type="button"
             onClick={() => {
-              const center = mapRef.current?.getCenter();
-              if (!center) {
-                setStatusMsg("Mapa no listo todavia.");
-                return;
-              }
-              selectNearestFromPoint(center.lat(), center.lng(), "center");
+              void selectFromMapCenter();
             }}
             className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-slate-950"
           >
