@@ -561,13 +561,6 @@ export default function AdminEspaciosPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={seedDemo}
-              className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-medium text-slate-950"
-            >
-              Seed demo
-            </button>
-            <button
-              type="button"
               onClick={fetchSpaces}
               className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-3 text-sm"
             >
@@ -584,9 +577,8 @@ export default function AdminEspaciosPage() {
 
         {!!message && <p className="mt-3 text-sm text-cyan-300">{message}</p>}
 
-        <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4 backdrop-blur">
-          <p className="text-sm font-medium text-slate-200">Nuevo espacio</p>
-          <div className="mt-3 rounded-xl border border-white/20 bg-white/5 p-4">
+        <div className="mt-5">
+          <div className="rounded-xl border border-white/20 bg-white/5 p-4">
             <p className="text-sm font-medium text-slate-200 mb-3">Captura en mapa</p>
 
             {/* Capture toggle buttons */}
@@ -709,7 +701,7 @@ export default function AdminEspaciosPage() {
           </button>
         </div>
 
-        <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4 backdrop-blur">
+        <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4">
           <p className="text-sm font-medium text-slate-200">parking_spaces ({spaces.length})</p>
           {loading && <p className="mt-2 text-sm text-slate-400">Cargando...</p>}
           <div className="mt-3 overflow-x-auto">

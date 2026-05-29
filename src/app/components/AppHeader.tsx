@@ -17,7 +17,7 @@ export default function AppHeader() {
       </Link>
 
       {sessionStatus === "authenticated" ? (
-        <div className="h-8 w-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-sm font-bold text-slate-200 select-none">
+        <div className="h-8 w-8 mr-4 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-sm font-bold text-slate-200 select-none">
           {initial}
         </div>
       ) : sessionStatus === "unauthenticated" ? (

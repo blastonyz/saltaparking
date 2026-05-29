@@ -500,7 +500,7 @@ export default function PermisionarioPage() {
         {/* â”€â”€ PERFIL tab â”€â”€ */}
         {activeTab === "perfil" && (
           <>
-            <section className="glass-panel rounded-xl p-6 flex flex-col items-center gap-4 text-center">
+            <section className="glass-panel rounded-xl p-6 flex flex-col justify-center items-center gap-4 text-center min-h-[60vh]">
               <div className="w-20 h-20 rounded-full bg-slate-700 border-4 border-slate-600 flex items-center justify-center text-3xl font-bold text-slate-200">
                 {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
               </div>
