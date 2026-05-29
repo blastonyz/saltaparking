@@ -74,6 +74,7 @@ export default function AdminEspaciosPage() {
 
   const [spaces, setSpaces] = useState<SpaceRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const [name, setName] = useState("");
@@ -325,11 +326,6 @@ export default function AdminEspaciosPage() {
     const totalNumber = Number(totalSpots);
     const rateNumber = Number(ratePerHour);
 
-    if (!name.trim() || !address.trim()) {
-      setMessage("Nombre y direccion son obligatorios");
-      return;
-    }
-
     if (!Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
       setMessage("Lat/Lng invalidos");
       return;
@@ -355,27 +351,41 @@ export default function AdminEspaciosPage() {
       return;
     }
 
-    const response = await fetch("/api/admin/spaces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create",
-        name,
-        address,
-        zoneId,
-        lat: latNumber,
-        lng: lngNumber,
-        availableSpots: availableNumber,
-        totalSpots: totalNumber,
-        ratePerHour: rateNumber,
-        assignedPermisionarioEmail,
-        blockPolygon,
-      }),
-    });
+    const normalizedZone = zoneId.trim().toUpperCase();
+    const fallbackZone = normalizedZone || `ZONA-${Math.abs(Math.round(latNumber * 1000))}-${Math.abs(Math.round(lngNumber * 1000))}`;
+    const finalName = name.trim() || `Zona ${fallbackZone}`;
+    const finalAddress = address.trim() || `Tramo ${latNumber.toFixed(6)},${lngNumber.toFixed(6)}`;
+
+    setSaving(true);
+    let response: Response;
+    try {
+      response = await fetch("/api/admin/spaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          name: finalName,
+          address: finalAddress,
+          zoneId: normalizedZone,
+          lat: latNumber,
+          lng: lngNumber,
+          availableSpots: availableNumber,
+          totalSpots: totalNumber,
+          ratePerHour: rateNumber,
+          assignedPermisionarioEmail,
+          blockPolygon,
+        }),
+      });
+    } catch {
+      setMessage("Error de red al crear espacio");
+      setSaving(false);
+      return;
+    }
 
     if (!response.ok) {
       const data = (await response.json().catch(() => ({}))) as { error?: string };
       setMessage(data.error || "No se pudo crear el espacio");
+      setSaving(false);
       return;
     }
 
@@ -398,6 +408,7 @@ export default function AdminEspaciosPage() {
     setAssignedPermisionarioEmail("");
     setBlockPolygonText("");
     await fetchSpaces();
+    setSaving(false);
   }
 
   async function seedDemo() {
@@ -566,9 +577,10 @@ export default function AdminEspaciosPage() {
           <button
             type="button"
             onClick={createSpace}
+            disabled={saving}
             className="mt-3 inline-flex h-10 items-center rounded-lg border border-cyan-500/40 px-4 text-sm text-cyan-300"
           >
-            Crear espacio
+            {saving ? "Guardando..." : "Crear espacio"}
           </button>
         </div>
 
