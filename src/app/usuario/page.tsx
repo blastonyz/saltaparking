@@ -133,6 +133,7 @@ export default function UsuarioPage() {
   const [mapsScriptError, setMapsScriptError] = useState<string>("");
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const [selectionLock, setSelectionLock] = useState(false);
+  const [mapAccordionOpen, setMapAccordionOpen] = useState(false);
   const [activePayment, setActivePayment] = useState<ActivePaymentResponse | null>(null);
 
   const mapRef = useRef<MapsMap | null>(null);
@@ -604,6 +605,14 @@ export default function UsuarioPage() {
           </button>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setMapAccordionOpen((prev) => !prev)}
+          className="mt-4 inline-flex h-10 items-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 text-sm text-cyan-200"
+        >
+          {mapAccordionOpen ? "Ocultar mapa y cuadras" : "Mostrar mapa y cuadras"}
+        </button>
+
         {!!statusMsg && <p className="mt-3 text-sm text-amber-300">{statusMsg}</p>}
         {loadingKey && <p className="mt-3 text-sm text-slate-400">Cargando configuracion de mapa...</p>}
         {!!mapsScriptError && <p className="mt-2 text-sm text-rose-300">{mapsScriptError}</p>}
@@ -611,7 +620,8 @@ export default function UsuarioPage() {
           <p className="mt-2 text-sm text-slate-400">Inicializando SDK de Google Maps...</p>
         )}
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
+        {mapAccordionOpen && (
+          <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div
             ref={mapContainerRef}
             className="h-[480px] rounded-xl border border-slate-800 bg-slate-950"
@@ -683,7 +693,8 @@ export default function UsuarioPage() {
               )}
             </ul>
           </div>
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
