@@ -219,17 +219,7 @@ export default function PermisionarioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pt-14 pb-20">
-      {/* TopAppBar */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-4 bg-slate-900/95 backdrop-blur border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <img src="/logo-salta.png" alt="SaltaParking" className="h-8 w-auto" />
-          <span className="font-bold text-base text-slate-100 tracking-tight">SaltaParking</span>
-        </div>
-        <div className="h-9 w-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-sm font-semibold text-slate-200">
-          {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
 
       <main className="px-4 py-5 max-w-lg mx-auto flex flex-col gap-4">
         {/* â”€â”€ INICIO tab â”€â”€ */}
@@ -296,7 +286,7 @@ export default function PermisionarioPage() {
               </div>
             </section>
 
-            {!!message && <p className="text-sm text-amber-300 px-1">{message}</p>}
+            {!!message && <p className="text-sm text-slate-300 px-1">{message}</p>}
 
             {result && (
               <section className="glass-panel rounded-xl p-4 flex flex-col gap-2 text-sm">
@@ -322,7 +312,7 @@ export default function PermisionarioPage() {
                 {(["disponible", "pocos", "lleno"] as const).map((status) => {
                   const cfg = {
                     disponible: { dot: "bg-emerald-500", label: "Disponible", active: "border-emerald-500 bg-emerald-500/20 ring-2 ring-emerald-500/20" },
-                    pocos:      { dot: "bg-amber-400",   label: "Pocos",       active: "border-amber-500 bg-amber-500/20 ring-2 ring-amber-500/20" },
+                    pocos:      { dot: "bg-orange-400",  label: "Pocos",       active: "border-orange-500 bg-orange-500/20 ring-2 ring-orange-500/20" },
                     lleno:      { dot: "bg-rose-500",    label: "Lleno",       active: "border-rose-500 bg-rose-500/20 ring-2 ring-rose-500/20" },
                   }[status];
                   return (
@@ -392,7 +382,7 @@ export default function PermisionarioPage() {
                 type="button"
                 onClick={registerCashPayment}
                 disabled={cashLoading}
-                className="w-full h-12 rounded-xl bg-amber-400 text-slate-950 font-semibold disabled:opacity-60 active:scale-95 transition-transform"
+                className="w-full h-12 rounded-xl bg-emerald-500 text-slate-950 font-semibold disabled:opacity-60 active:scale-95 transition-transform"
               >
                 {cashLoading ? "Registrando..." : "Marcar cobrado en efectivo"}
               </button>
@@ -406,13 +396,13 @@ export default function PermisionarioPage() {
                 <input value={transferCbu} onChange={(e) => setTransferCbu(e.target.value)} placeholder="CBU/CVU" className="h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-100" />
                 <input value={transferOwner} onChange={(e) => setTransferOwner(e.target.value)} placeholder="Titular" className="h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-100" />
               </div>
-              {usedFallbackZones && <p className="text-xs text-amber-300">No habia zonas asignadas: se cargaron zonas sin asignar como fallback operativo.</p>}
+              {usedFallbackZones && <p className="text-xs text-orange-300">No habia zonas asignadas: se cargaron zonas sin asignar como fallback operativo.</p>}
               <ul className="flex flex-col gap-2">
                 {zones.map((zone) => (
                   <li key={zone.id} className="rounded-xl border border-slate-800 p-3">
                     <p className="text-sm font-medium text-slate-100">{zone.name}</p>
                     <p className="text-xs text-slate-400">{zone.address}</p>
-                    <p className="text-xs text-amber-300 mt-0.5">Zona: {zone.zoneId || "-"} Â· ${zone.ratePerHour}/h</p>
+                    <p className="text-xs text-cyan-300 mt-0.5">Zona: {zone.zoneId || "-"} Â· ${zone.ratePerHour}/h</p>
                     <div className="mt-2 flex gap-2">
                       <button
                         type="button"
@@ -483,7 +473,7 @@ export default function PermisionarioPage() {
                   </div>
                 </div>
               )}
-              {!!message && <p className="text-sm text-amber-300">{message}</p>}
+              {!!message && <p className="text-sm text-slate-300">{message}</p>}
             </section>
           </>
         )}
@@ -498,7 +488,7 @@ export default function PermisionarioPage() {
             {(["disponible", "pocos", "lleno"] as const).map((status) => {
               const cfg = {
                 disponible: { activeBorder: "border-emerald-500", activeBg: "bg-emerald-500/15", dot: "bg-emerald-500 shadow-emerald-500/50", label: "Disponible",    desc: "MÃºltiples lugares libres en esta zona." },
-                pocos:      { activeBorder: "border-amber-500",   activeBg: "bg-amber-500/15",   dot: "bg-amber-400 shadow-amber-400/50",   label: "Pocos Lugares", desc: "Alta ocupaciÃ³n. Estacionamiento limitado." },
+                pocos:      { activeBorder: "border-orange-500",  activeBg: "bg-orange-500/15",  dot: "bg-orange-400 shadow-orange-400/50",  label: "Pocos Lugares", desc: "Alta ocupaciÃ³n. Estacionamiento limitado." },
                 lleno:      { activeBorder: "border-rose-500",    activeBg: "bg-rose-500/15",    dot: "bg-rose-500 shadow-rose-500/50",     label: "Lleno",         desc: "Capacidad mÃ¡xima. Busque alternativas." },
               }[status];
               const active = zoneAvailability === status;
@@ -556,7 +546,7 @@ export default function PermisionarioPage() {
                   <div key={zone.id}>
                     <p className="text-sm font-medium text-slate-100">{zone.name}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{zone.address}</p>
-                    <p className="text-xs text-amber-300 mt-0.5">${zone.ratePerHour}/h Â· Zona {zone.zoneId || "-"}</p>
+                    <p className="text-xs text-cyan-300 mt-0.5">${zone.ratePerHour}/h Â· Zona {zone.zoneId || "-"}</p>
                   </div>
                 ))}
               </section>

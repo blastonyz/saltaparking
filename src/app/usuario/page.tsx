@@ -144,6 +144,8 @@ export default function UsuarioPage() {
   const spacesRef = useRef<Space[]>([]);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [vehicleType, setVehicleType] = useState<"auto" | "moto">("auto");
+
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
 
@@ -567,7 +569,7 @@ export default function UsuarioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       {mapsKey && (
         <Script
           src={`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=places`}
@@ -579,175 +581,208 @@ export default function UsuarioPage() {
         />
       )}
 
-      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
+      <main className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-4">
+        {/* Active payment banner */}
         {activePayment?.hasActivePayment && (
-          <div className="mb-4 rounded-xl border border-emerald-600/40 bg-emerald-950/20 p-3 text-sm">
-            <p className="text-emerald-300">Tienes horas compradas activas</p>
+          <div className="rounded-xl border border-emerald-600/40 bg-emerald-950/20 p-4 text-sm">
+            <p className="font-semibold text-emerald-300">Horas activas vigentes</p>
             <p className="mt-1 text-slate-200">
-              Patente {activePayment.plate} - {activePayment.remainingHours} h restantes
-              {activePayment.zoneId ? ` (zona ${activePayment.zoneId})` : ""}
+              Patente {activePayment.plate} — {activePayment.remainingHours} h restantes
+              {activePayment.zoneId ? ` · zona ${activePayment.zoneId}` : ""}
             </p>
             {activePayment.expiresAt && (
-              <p className="mt-1 text-xs text-slate-300">
+              <p className="mt-1 text-xs text-slate-400">
                 Vigente hasta {new Date(activePayment.expiresAt).toLocaleString()}
               </p>
             )}
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img src="/logo-salta.png" alt="Logo Salta" className="h-10 w-auto" />
-            <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Usuario</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight">Mapa de espacios disponibles</h1>
-            </div>
+        {/* Vehicle type mock selector */}
+        <section className="glass-panel rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-slate-300 mb-3 text-center tracking-wide uppercase">
+            Tipo de vehículo
+          </h2>
+          <div className="flex justify-evenly gap-3">
+            {(["auto", "moto"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setVehicleType(type)}
+                className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-xl border-2 py-4 transition-all active:scale-95 ${
+                  vehicleType === type
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                    : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+                }`}
+              >
+                <span className="text-3xl">{type === "auto" ? "🚗" : "🏍️"}</span>
+                <span className="text-sm font-semibold capitalize">{type === "auto" ? "Auto" : "Moto"}</span>
+              </button>
+            ))}
           </div>
-          <Link
-            href="/"
-            className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-3 text-sm"
-          >
-            Volver al inicio
-          </Link>
-        </div>
+        </section>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        {/* Address search */}
+        <section className="glass-panel rounded-xl p-5 flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-slate-300 tracking-wide uppercase">Buscar zona</h2>
           <input
             value={addressQuery}
             onChange={(e) => setAddressQuery(e.target.value)}
-            placeholder="Buscar direccion en Salta"
-            className="h-11 w-full max-w-md rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm"
+            onKeyDown={(e) => { if (e.key === "Enter") void searchAddress(); }}
+            placeholder="Ingresa una dirección en Salta"
+            className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
           />
+          <div className="flex justify-evenly gap-2">
+            <button
+              type="button"
+              onClick={() => void searchAddress()}
+              className="flex-1 h-11 rounded-xl bg-cyan-500 text-slate-950 text-sm font-semibold active:scale-95 transition-transform"
+            >
+              Buscar
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (position) void fetchSpaces(position.lat, position.lng); }}
+              className="flex-1 h-11 rounded-xl border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800/60 active:scale-95 transition-transform"
+            >
+              Actualizar
+            </button>
+          </div>
+        </section>
+
+        {/* Map action bar — 3 compact icon buttons */}
+        <div className="flex justify-evenly gap-2">
           <button
             type="button"
-            onClick={searchAddress}
-            className="inline-flex h-11 items-center rounded-lg bg-cyan-500 px-4 text-sm font-medium text-slate-950"
+            onClick={() => void selectFromMapCenter()}
+            className="flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 active:scale-95 transition-all hover:bg-emerald-500/20"
           >
-            Buscar direccion
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (position) {
-                void fetchSpaces(position.lat, position.lng);
-              }
-            }}
-            className="inline-flex h-11 items-center rounded-lg border border-slate-700 px-4 text-sm"
-          >
-            Actualizar espacios
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              void selectFromMapCenter();
-            }}
-            className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-slate-950"
-          >
-            Seleccionar cuadra en centro
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span className="text-[10px] font-semibold">Centrar</span>
           </button>
           <button
             type="button"
             onClick={() => setSelectionLock((prev) => !prev)}
-            className="inline-flex h-11 items-center rounded-lg border border-amber-500/40 px-4 text-sm text-amber-300"
+            className={`flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl border active:scale-95 transition-all ${
+              selectionLock
+                ? "border-blue-500/60 bg-blue-500/15 text-blue-300"
+                : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+            }`}
           >
-            {selectionLock ? "Desbloquear mapa" : "Bloquear arrastre (modo seleccion)"}
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              {selectionLock
+                ? <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                : <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
+              }
+            </svg>
+            <span className="text-[10px] font-semibold">{selectionLock ? "Bloqueado" : "Selección"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapAccordionOpen((prev) => !prev)}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl border active:scale-95 transition-all ${
+              mapAccordionOpen
+                ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-300"
+                : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+            }`}
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+            </svg>
+            <span className="text-[10px] font-semibold">{mapAccordionOpen ? "Ocultar" : "Mapa"}</span>
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMapAccordionOpen((prev) => !prev)}
-          className="mt-4 inline-flex h-10 items-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 text-sm text-cyan-200"
-        >
-          {mapAccordionOpen ? "Ocultar mapa y cuadras" : "Mostrar mapa y cuadras"}
-        </button>
-
-        {!!statusMsg && <p className="mt-3 text-sm text-amber-300">{statusMsg}</p>}
-        {loadingKey && <p className="mt-3 text-sm text-slate-400">Cargando configuracion de mapa...</p>}
-        {!!mapsScriptError && <p className="mt-2 text-sm text-rose-300">{mapsScriptError}</p>}
+        {/* Status messages */}
+        {!!statusMsg && <p className="text-sm text-slate-300 px-1">{statusMsg}</p>}
+        {loadingKey && <p className="text-sm text-slate-400">Cargando configuracion de mapa...</p>}
+        {!!mapsScriptError && <p className="text-sm text-rose-300">{mapsScriptError}</p>}
         {!loadingKey && !mapsScriptError && !mapReady && (
-          <p className="mt-2 text-sm text-slate-400">Inicializando SDK de Google Maps...</p>
+          <p className="text-sm text-slate-400">Inicializando SDK de Google Maps...</p>
         )}
 
+        {/* Map accordion */}
         {mapAccordionOpen && (
-          <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
-          <div
-            ref={mapContainerRef}
-            className="h-[480px] rounded-xl border border-slate-800 bg-slate-950"
-          >
-            {mapsScriptError && (
-              <div className="h-full w-full flex items-center justify-center p-6 text-center text-sm text-rose-300">
-                {mapsScriptError}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-            <div className="mb-3 rounded-md border border-emerald-900/60 bg-emerald-950/20 p-2">
-              <p className="text-xs text-emerald-300">Seleccion actual</p>
-              <p className="text-sm text-slate-100">
-                {selectedSpace ? selectedSpace.name : "Haz click en el mapa, marcador o poligono para elegir cuadra"}
-              </p>
-              {selectedSpace && (
-                <p className={`mt-1 text-xs ${getAvailabilityBadge(selectedSpace).className}`}>
-                  {getAvailabilityBadge(selectedSpace).label}
-                </p>
-              )}
-              {selectedSpace && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedSpace.availableSpots > 0 ? (
-                    <Link
-                      href={`/checkout?title=${encodeURIComponent(selectedSpace.name)}&unitPrice=${selectedSpace.ratePerHour}&zoneId=${encodeURIComponent(selectedSpace.zoneId || "")}`}
-                      className="inline-flex h-9 items-center rounded-md bg-emerald-400 px-3 text-xs font-semibold text-slate-950"
-                    >
-                      Pagar cuadra seleccionada
-                    </Link>
-                  ) : (
-                    <span className="inline-flex h-9 items-center rounded-md border border-rose-500/40 px-3 text-xs text-rose-300">
-                      Cuadra completa
-                    </span>
-                  )}
-
-
+          <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+            <div
+              ref={mapContainerRef}
+              className="h-[420px] rounded-xl border border-slate-800 bg-slate-950"
+            >
+              {mapsScriptError && (
+                <div className="h-full w-full flex items-center justify-center p-6 text-center text-sm text-rose-300">
+                  {mapsScriptError}
                 </div>
               )}
             </div>
 
-            {spaces.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-500 mb-2">Zonas en el area ({spaces.length})</p>
-                <ul className="space-y-1">
-                  {spaces.map((item, idx) => (
-                    <li key={item.id || `${item.zoneId || item.name}-${idx}`}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedSpace(item);
-                          mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
-                          mapRef.current?.setZoom(17);
-                          setStatusMsg(`Cuadra seleccionada: ${item.name}`);
-                        }}
-                        className={`w-full rounded-md px-3 py-2 text-left text-xs transition ${
-                          selectedSpace?.id === item.id
-                            ? "bg-emerald-950/40 border border-emerald-500/50 text-emerald-300"
-                            : "border border-slate-800 text-slate-300 hover:bg-slate-800/60"
-                        }`}
+            <div className="glass-panel rounded-xl p-3 flex flex-col gap-3">
+              <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 p-3">
+                <p className="text-xs text-slate-400">Seleccion actual</p>
+                <p className="mt-1 text-sm text-slate-100">
+                  {selectedSpace
+                    ? selectedSpace.name
+                    : "Toca el mapa o un marcador para elegir cuadra"}
+                </p>
+                {selectedSpace && (
+                  <p className={`mt-1 text-xs ${getAvailabilityBadge(selectedSpace).className}`}>
+                    {getAvailabilityBadge(selectedSpace).label}
+                  </p>
+                )}
+                {selectedSpace && (
+                  <div className="mt-2 flex justify-evenly gap-2">
+                    {selectedSpace.availableSpots > 0 ? (
+                      <Link
+                        href={`/checkout?title=${encodeURIComponent(selectedSpace.name)}&unitPrice=${selectedSpace.ratePerHour}&zoneId=${encodeURIComponent(selectedSpace.zoneId || "")}`}
+                        className="flex-1 inline-flex h-9 items-center justify-center rounded-lg bg-emerald-500 px-3 text-xs font-semibold text-slate-950"
                       >
-                        <span className="font-medium">{item.name}</span>
-                        <span className="ml-2 text-slate-500">${item.ratePerHour}/h</span>
-                        <span className={`ml-2 ${getAvailabilityBadge(item).className}`}>
-                          {getAvailabilityBadge(item).label}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                        Pagar cuadra
+                      </Link>
+                    ) : (
+                      <span className="inline-flex h-9 items-center justify-center rounded-lg border border-rose-500/40 px-3 text-xs text-rose-300">
+                        Cuadra completa
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-            {spaces.length === 0 && (
-              <p className="mt-3 text-xs text-slate-400">Haz click en el mapa o busca una direccion para ver zonas.</p>
-            )}
-          </div>
+
+              {spaces.length > 0 && (
+                <>
+                  <p className="text-xs text-slate-500">Zonas en el area ({spaces.length})</p>
+                  <ul className="space-y-1 overflow-y-auto max-h-[280px]">
+                    {spaces.map((item, idx) => (
+                      <li key={item.id || `${item.zoneId || item.name}-${idx}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSpace(item);
+                            mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
+                            mapRef.current?.setZoom(17);
+                            setStatusMsg(`Cuadra seleccionada: ${item.name}`);
+                          }}
+                          className={`w-full rounded-lg px-3 py-2 text-left text-xs transition ${
+                            selectedSpace?.id === item.id
+                              ? "bg-emerald-950/40 border border-emerald-500/50 text-emerald-300"
+                              : "border border-slate-800 text-slate-300 hover:bg-slate-800/60"
+                          }`}
+                        >
+                          <span className="font-medium">{item.name}</span>
+                          <span className="ml-2 text-slate-500">${item.ratePerHour}/h</span>
+                          <span className={`ml-2 ${getAvailabilityBadge(item).className}`}>
+                            {getAvailabilityBadge(item).label}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {spaces.length === 0 && (
+                <p className="text-xs text-slate-400">Busca una direccion para ver zonas.</p>
+              )}
+            </div>
           </div>
         )}
       </main>
@@ -821,7 +856,7 @@ function getAvailabilityBadge(space: {
   if (available <= Math.ceil(total * 0.25)) {
     return {
       label: "🟡 Pocos lugares",
-      className: "text-amber-300",
+      className: "text-orange-300",
     };
   }
 

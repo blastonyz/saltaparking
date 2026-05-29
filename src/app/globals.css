@@ -3,6 +3,19 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ParkApp palette tokens */
+  --pk-primary: #10b981;        /* emerald-500  – acciones principales */
+  --pk-primary-light: #34d399;  /* emerald-400  – hover / estados activos */
+  --pk-accent: #06b6d4;         /* cyan-500     – busqueda / accentos */
+  --pk-info: #3b82f6;           /* blue-500     – navegacion / estados */
+  --pk-danger: #f43f5e;         /* rose-500     – errores / deuda */
+  --pk-warn: #f97316;           /* orange-500   – advertencias (sin amarillo) */
+  --pk-surface: rgba(15,23,42,0.58);
+  --pk-card: rgba(15,23,42,0.80);
+  --pk-border: rgba(226,232,240,0.12);
+  --pk-text: #f1f5f9;
+  --pk-text-muted: #94a3b8;
 }
 
 @theme inline {
