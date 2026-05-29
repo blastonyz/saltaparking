@@ -191,7 +191,7 @@ export default function PermisionarioPage() {
         return;
       }
 
-      const initPoint = data.sandboxInitPoint || data.initPoint || "";
+      const initPoint = data.initPoint || data.sandboxInitPoint || "";
       if (!initPoint) {
         setMessage("Mercado Pago no devolvio init_point");
         return;

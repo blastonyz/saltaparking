@@ -10,6 +10,8 @@ type PreferenceResponse = {
   sandboxInitPoint?: string;
 };
 
+type PaymentMode = "production" | "sandbox";
+
 export default function CheckoutPage() {
   const { session } = useAuth();
   const [title, setTitle] = useState("Hora de estacionamiento");
@@ -24,6 +26,7 @@ export default function CheckoutPage() {
   const [lastInitPoint, setLastInitPoint] = useState("");
   const [lastSandboxPoint, setLastSandboxPoint] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("production");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
   const popupRef = useRef<Window | null>(null);
@@ -124,11 +127,11 @@ export default function CheckoutPage() {
       const prodPoint = data.initPoint || "";
 
       setLastSandboxPoint(sandboxPoint);
-      setLastInitPoint(sandboxPoint || prodPoint);
+      setLastInitPoint(prodPoint || sandboxPoint);
       setStatusMsg(
-        sandboxPoint
-          ? "Preferencia creada. Sandbox listo para abrir checkout."
-          : "Preferencia creada. No vino sandboxInitPoint, usando initPoint."
+        prodPoint
+          ? "Preferencia creada. Usa Produccion para cobro real o Sandbox para pruebas controladas."
+          : "Preferencia creada. No vino initPoint, usando sandboxInitPoint."
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -151,7 +154,10 @@ export default function CheckoutPage() {
   }, []);
 
   function openCheckoutPopup() {
-    const targetUrl = lastSandboxPoint || lastInitPoint;
+    const targetUrl =
+      paymentMode === "sandbox"
+        ? lastSandboxPoint || lastInitPoint
+        : lastInitPoint || lastSandboxPoint;
     if (!targetUrl) {
       setStatusMsg("Primero genera una preferencia.");
       return;
@@ -192,13 +198,18 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     async function generateQr() {
-      if (!lastInitPoint) {
+      const targetUrl =
+        paymentMode === "sandbox"
+          ? lastSandboxPoint || lastInitPoint
+          : lastInitPoint || lastSandboxPoint;
+
+      if (!targetUrl) {
         setQrDataUrl("");
         return;
       }
 
       try {
-        const result = await QRCode.toDataURL(lastInitPoint, {
+        const result = await QRCode.toDataURL(targetUrl, {
           width: 260,
           margin: 1,
           errorCorrectionLevel: "M",
@@ -210,7 +221,7 @@ export default function CheckoutPage() {
     }
 
     void generateQr();
-  }, [lastInitPoint]);
+  }, [lastInitPoint, lastSandboxPoint, paymentMode]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -339,6 +350,39 @@ export default function CheckoutPage() {
           </label>
         </div>
 
+        <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950/70 p-3">
+          <p className="text-xs text-slate-300">Modo de checkout</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setPaymentMode("production")}
+              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
+                paymentMode === "production"
+                  ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
+                  : "border-slate-700 text-slate-300"
+              }`}
+            >
+              Produccion
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMode("sandbox")}
+              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
+                paymentMode === "sandbox"
+                  ? "border-amber-500/60 bg-amber-500/15 text-amber-300"
+                  : "border-slate-700 text-slate-300"
+              }`}
+            >
+              Sandbox (pruebas)
+            </button>
+          </div>
+          {paymentMode === "sandbox" && (
+            <p className="mt-2 text-xs text-amber-300">
+              En Sandbox, comprador y vendedor deben ser cuentas de prueba para evitar error de partes mezcladas.
+            </p>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={handleCreatePreference}
@@ -396,7 +440,11 @@ export default function CheckoutPage() {
             </button>
 
             <a
-              href={lastSandboxPoint || lastInitPoint}
+              href={
+                paymentMode === "sandbox"
+                  ? lastSandboxPoint || lastInitPoint
+                  : lastInitPoint || lastSandboxPoint
+              }
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm"
@@ -418,7 +466,10 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={async () => {
-                const directLink = lastSandboxPoint || lastInitPoint;
+                const directLink =
+                  paymentMode === "sandbox"
+                    ? lastSandboxPoint || lastInitPoint
+                    : lastInitPoint || lastSandboxPoint;
                 if (!directLink) return;
 
                 try {
@@ -435,7 +486,7 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {lastInitPoint && (
+        {(lastInitPoint || lastSandboxPoint) && (
           <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
             <p className="text-sm font-medium text-slate-200">QR de pago</p>
             <p className="mt-1 text-xs text-slate-400">
