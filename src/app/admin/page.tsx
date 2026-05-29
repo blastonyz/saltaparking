@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useAuth } from "@/app/context/auth-context";
@@ -21,7 +21,7 @@ export default function AdminPage() {
           <p className="text-sm text-slate-200">Necesitas iniciar sesion para acceder al panel admin.</p>
           <Link
             href="/"
-            className="mx-auto mt-4 inline-flex h-10 items-center rounded-lg border border-white/30 bg-white/10 px-4 text-sm"
+            className="mx-auto mt-4 inline-flex h-10 items-center rounded-lg border border-slate-700 bg-slate-800/60 px-4 text-sm"
           >
             Volver al inicio
           </Link>
@@ -37,7 +37,7 @@ export default function AdminPage() {
           <p className="text-sm text-amber-200">No tienes permisos de administrador.</p>
           <Link
             href="/"
-            className="mx-auto mt-4 inline-flex h-10 items-center rounded-lg border border-white/30 bg-white/10 px-4 text-sm"
+            className="mx-auto mt-4 inline-flex h-10 items-center rounded-lg border border-slate-700 bg-slate-800/60 px-4 text-sm"
           >
             Volver al inicio
           </Link>

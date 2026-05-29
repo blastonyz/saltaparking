@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -97,7 +97,7 @@ export default function AdminPermisionariosPage() {
   if (sessionStatus !== "authenticated") {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-        <main className="w-full max-w-2xl rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-xl">
+        <main className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-950/55 p-8 shadow-xl">
           <p className="text-sm text-slate-300">Necesitas iniciar sesion para acceder.</p>
           <Link
             href="/"
@@ -113,7 +113,7 @@ export default function AdminPermisionariosPage() {
   if (session?.user?.role !== "admin") {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-        <main className="w-full max-w-2xl rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-xl">
+        <main className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-950/55 p-8 shadow-xl">
           <p className="text-sm text-amber-300">No tienes permisos de administrador.</p>
           <Link
             href="/"
@@ -128,7 +128,7 @@ export default function AdminPermisionariosPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-      <main className="w-full max-w-5xl rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-xl">
+      <main className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-950/55 p-8 shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-amber-300">Admin</p>
@@ -137,7 +137,7 @@ export default function AdminPermisionariosPage() {
           <button
             type="button"
             onClick={fetchPendingPermisionarios}
-            className="inline-flex h-10 items-center rounded-lg border border-white/30 bg-white/10 px-3 text-sm"
+            className="inline-flex h-10 items-center rounded-lg border border-slate-700 bg-slate-800/60 px-3 text-sm"
           >
             Actualizar
           </button>
@@ -179,7 +179,7 @@ export default function AdminPermisionariosPage() {
           </button>
         </div>
 
-        <div className="mt-3 rounded-xl border border-white/20 bg-white/5 p-3">
+        <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900/60 p-3">
           <p className="text-xs text-slate-300">Filtro claro por email o patente</p>
           <input
             value={search}
@@ -201,7 +201,7 @@ export default function AdminPermisionariosPage() {
           {filteredRows.map((item) => (
             <li
               key={item.userId}
-              className="rounded-xl border border-white/20 bg-white/5 p-4 text-sm backdrop-blur"
+              className="rounded-xl border border-slate-700 bg-slate-900/60 p-4 text-sm backdrop-blur"
             >
               <p className="text-slate-100">{item.email}</p>
               <p className="mt-1 text-xs text-slate-300">Patente: {item.plate || "sin cargar"}</p>

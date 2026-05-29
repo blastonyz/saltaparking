@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Script from "next/script";
@@ -552,7 +552,7 @@ export default function AdminEspaciosPage() {
         />
       )}
 
-      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-white/20 bg-white/10 p-6 shadow-xl backdrop-blur-xl">
+      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-700 bg-slate-950/55 p-6 shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Admin</p>
@@ -578,7 +578,7 @@ export default function AdminEspaciosPage() {
         {!!message && <p className="mt-3 text-sm text-cyan-300">{message}</p>}
 
         <div className="mt-5">
-          <div className="rounded-xl border border-white/20 bg-white/5 p-4">
+          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
             <p className="text-sm font-medium text-slate-200 mb-3">Captura en mapa</p>
 
             {/* Capture toggle buttons */}
@@ -592,7 +592,7 @@ export default function AdminEspaciosPage() {
                     : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                📍 Capturar Desde
+                ðŸ“ Capturar Desde
               </button>
               <button
                 type="button"
@@ -603,7 +603,7 @@ export default function AdminEspaciosPage() {
                     : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                🏁 Capturar Hasta
+                ðŸ Capturar Hasta
               </button>
             </div>
 
@@ -621,10 +621,10 @@ export default function AdminEspaciosPage() {
 
             {/* Map */}
             <div id={mapContainerId} className="h-[480px] rounded-xl border border-white/20 bg-slate-950/60" />
-            <p className="mt-2 text-[11px] text-yellow-300">Previsualización: amarillo · Guardadas: colores varios</p>
+            <p className="mt-2 text-[11px] text-yellow-300">PrevisualizaciÃ³n: amarillo Â· Guardadas: colores varios</p>
             {mapsError && <p className="mt-1 text-xs text-rose-300">{mapsError}</p>}
           </div>
-          <div className="mt-3 rounded-xl border border-white/20 bg-white/5 p-4">
+          <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900/60 p-4">
             <p className="text-sm font-medium text-slate-200 mb-3">Generador de tramo</p>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-400">Ancho:</span>
@@ -658,7 +658,7 @@ export default function AdminEspaciosPage() {
                   : "bg-cyan-500 text-slate-950 hover:bg-cyan-400"
               }`}
             >
-              {applySuccess ? "✅ Tramo aplicado" : "Aplicar tramo"}
+              {applySuccess ? "âœ… Tramo aplicado" : "Aplicar tramo"}
             </button>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -667,7 +667,7 @@ export default function AdminEspaciosPage() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Calle San Martin..." className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-400 uppercase tracking-wider">Dirección</label>
+              <label className="text-xs text-slate-400 uppercase tracking-wider">DirecciÃ³n</label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="San Martin 200-300" className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
             </div>
             <div className="flex flex-col gap-1">
@@ -701,7 +701,7 @@ export default function AdminEspaciosPage() {
           </button>
         </div>
 
-        <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4">
+        <div className="mt-5 rounded-xl border border-slate-700 bg-slate-900/60 p-4">
           <p className="text-sm font-medium text-slate-200">parking_spaces ({spaces.length})</p>
           {loading && <p className="mt-2 text-sm text-slate-400">Cargando...</p>}
           <div className="mt-3 overflow-x-auto">

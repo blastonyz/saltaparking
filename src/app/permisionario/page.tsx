@@ -227,7 +227,7 @@ export default function PermisionarioPage() {
         {activeTab === "inicio" && (
           <>
             {pendingRequests.map((req) => (
-              <section key={req._id} className="relative overflow-hidden rounded-xl glass-panel p-4 flex gap-3 items-start">
+              <section key={req._id} className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950/55 p-4 flex gap-3 items-start">
                 <div className="absolute top-0 left-0 w-1 h-full bg-rose-500 rounded-l-xl" />
                 <div className="ml-2 w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0">
                   <svg className="h-5 w-5 text-rose-300" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
@@ -249,7 +249,7 @@ export default function PermisionarioPage() {
             ))}
 
             {/* Vehicle type */}
-            <section className="glass-panel rounded-xl p-5 flex flex-col gap-4">
+            <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-5 flex flex-col gap-4">
               <h2 className="text-lg font-semibold text-slate-100">Registro de Vehículo</h2>
               <div>
                 <label className="text-xs text-slate-400 mb-1.5 block uppercase tracking-wider">Patente</label>
@@ -308,7 +308,7 @@ export default function PermisionarioPage() {
             {!!message && <p className="text-sm text-slate-300 px-1">{message}</p>}
 
             {result && (
-              <section className="glass-panel rounded-xl p-4 flex flex-col gap-2 text-sm">
+              <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-4 flex flex-col gap-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold text-slate-100">{result.plate}</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${result.hasDebt ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 text-emerald-300"}`}>
@@ -325,7 +325,7 @@ export default function PermisionarioPage() {
             )}
 
             {/* Zone availability */}
-            <section className="glass-panel rounded-xl p-5 flex flex-col gap-3">
+            <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-5 flex flex-col gap-3">
               <h2 className="text-base font-semibold text-slate-100">Disponibilidad de Zona</h2>
               <div className="grid grid-cols-3 gap-2">
                 {(["disponible", "pocos", "lleno"] as const).map((status) => {
@@ -354,7 +354,7 @@ export default function PermisionarioPage() {
         {/* â”€â”€ COBROS tab â”€â”€ */}
         {activeTab === "cobros" && (
           <>
-            <section className="glass-panel rounded-xl p-5 flex flex-col gap-4">
+            <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-5 flex flex-col gap-4">
               <h2 className="text-lg font-semibold text-slate-100">Cobro en Efectivo</h2>
               <p className="text-xs text-slate-400">Registra un pago manual por horas para habilitar la patente.</p>
               <div className="flex flex-col gap-2">
@@ -407,7 +407,7 @@ export default function PermisionarioPage() {
               </button>
             </section>
 
-            <section className="glass-panel rounded-xl p-5 flex flex-col gap-4">
+            <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-5 flex flex-col gap-4">
               <h2 className="text-lg font-semibold text-slate-100">QR por Zona</h2>
               <p className="text-xs text-slate-400">Genera un QR que abre el checkout preconfigurado.</p>
               <div className="grid grid-cols-3 gap-2">
@@ -500,7 +500,7 @@ export default function PermisionarioPage() {
         {/* â”€â”€ PERFIL tab â”€â”€ */}
         {activeTab === "perfil" && (
           <>
-            <section className="glass-panel rounded-xl p-6 flex flex-col justify-center items-center gap-4 text-center min-h-[60vh]">
+            <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-6 flex flex-col justify-center items-center gap-4 text-center min-h-[60vh]">
               <div className="w-20 h-20 rounded-full bg-slate-700 border-4 border-slate-600 flex items-center justify-center text-3xl font-bold text-slate-200">
                 {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
               </div>
@@ -515,7 +515,7 @@ export default function PermisionarioPage() {
             </section>
 
             {zones.length > 0 && (
-              <section className="glass-panel rounded-xl p-5 flex flex-col gap-3">
+              <section className="rounded-xl border border-slate-700 bg-slate-950/55 p-5 flex flex-col gap-3">
                 <div className="flex items-center gap-2 border-b border-slate-700/50 pb-3">
                   <svg className="h-5 w-5 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                   <h3 className="font-semibold text-slate-100">Zona Asignada</h3>
