@@ -30,6 +30,24 @@ type ParkingPaymentDoc = {
 
 export async function POST(req: Request) {
   try {
+    const accessTokenType = inferCredentialType(process.env.MP_ACCESS_TOKEN);
+    const publicKeyType = inferCredentialType(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+    const allowProd = process.env.ALLOW_PROD_MP === "true";
+
+    if (accessTokenType === "prod" && !allowProd) {
+      return NextResponse.json(
+        {
+          error: "Produccion bloqueada: este entorno solo permite Sandbox.",
+          diagnostics: {
+            accessTokenType,
+            publicKeyType,
+            allowProd,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const body = (await req.json()) as CreatePreferenceBody;
     const baseUrl = normalizeBaseUrl(getBaseUrl(req));
     const notificationUrl = getNotificationUrl(baseUrl);
@@ -128,11 +146,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       preferenceId,
-      initPoint: result.init_point,
       sandboxInitPoint: result.sandbox_init_point,
       diagnostics: {
-        accessTokenType: inferCredentialType(process.env.MP_ACCESS_TOKEN),
-        publicKeyType: inferCredentialType(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY),
+        accessTokenType,
+        publicKeyType,
+        allowProd,
       },
     });
   } catch (error) {

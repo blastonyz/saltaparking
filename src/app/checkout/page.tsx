@@ -6,7 +6,6 @@ import { useAuth } from "@/app/context/auth-context";
 
 type PreferenceResponse = {
   preferenceId: string;
-  initPoint?: string;
   sandboxInitPoint?: string;
   diagnostics?: {
     accessTokenType?: "test" | "prod" | "missing";
@@ -14,38 +13,21 @@ type PreferenceResponse = {
   };
 };
 
-type PaymentMode = "production" | "sandbox";
-
 export default function CheckoutPage() {
   const { session } = useAuth();
   const [title, setTitle] = useState("Hora de estacionamiento");
-  const [quantity, setQuantity] = useState(1);
+  const [quantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(1000);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [plate, setPlate] = useState("");
   const [zoneId, setZoneId] = useState("");
-  const [payerEmail, setPayerEmail] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lastInitPoint, setLastInitPoint] = useState("");
   const [lastSandboxPoint, setLastSandboxPoint] = useState("");
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("sandbox");
-  const [linksAreSame, setLinksAreSame] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
 
   const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("checkout-payment-mode");
-    if (stored === "production" || stored === "sandbox") {
-      setPaymentMode(stored);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("checkout-payment-mode", paymentMode);
-  }, [paymentMode]);
 
   useEffect(() => {
     if (session?.user?.plate && !normalizedPlate) {
@@ -121,7 +103,6 @@ export default function CheckoutPage() {
           title,
           quantity,
           unitPrice,
-          payerEmail,
           plate: normalizedPlate,
           zoneId,
           durationMinutes,
@@ -137,11 +118,8 @@ export default function CheckoutPage() {
       }
 
       const sandboxPoint = data.sandboxInitPoint || "";
-      const prodPoint = data.initPoint || "";
-
       setLastSandboxPoint(sandboxPoint);
-      setLastInitPoint(prodPoint);
-      setLinksAreSame(Boolean(prodPoint && sandboxPoint && prodPoint === sandboxPoint));
+
       const diag = data.diagnostics;
       const diagText = diag
         ? ` [server token: ${diag.accessTokenType || "?"}, public key: ${diag.publicKeyType || "?"}]`
@@ -149,8 +127,8 @@ export default function CheckoutPage() {
 
       setStatusMsg(
         sandboxPoint
-          ? "Preferencia creada. Usa Sandbox para pruebas; Produccion solo si tienes credenciales reales activas."
-          : "Preferencia creada sin sandboxInitPoint."
+          ? "Listo. Abre el link para completar el pago."
+          : "No se obtuvo link de pago."
         + diagText
       );
     } catch (error) {
@@ -165,13 +143,12 @@ export default function CheckoutPage() {
     }
   }
 
-  const selectedUrl = paymentMode === "sandbox" ? lastSandboxPoint : lastInitPoint;
+  const selectedUrl = lastSandboxPoint;
   const hasSelectedUrl = Boolean(selectedUrl);
 
   useEffect(() => {
     async function generateQr() {
-      const targetUrl =
-        paymentMode === "sandbox" ? lastSandboxPoint : lastInitPoint;
+      const targetUrl = lastSandboxPoint;
 
       if (!targetUrl) {
         setQrDataUrl("");
@@ -191,7 +168,7 @@ export default function CheckoutPage() {
     }
 
     void generateQr();
-  }, [lastInitPoint, lastSandboxPoint, paymentMode]);
+  }, [lastSandboxPoint]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -216,7 +193,7 @@ export default function CheckoutPage() {
       if (staleForMs > 5000) {
         setLoading(false);
         loadingSinceRef.current = null;
-        setStatusMsg("Volviste al checkout. Si cancelaste, puedes reintentar el pago.");
+        setStatusMsg("Volviste. Si cancelaste, puedes reintentar el pago.");
       }
     }
 
@@ -241,129 +218,49 @@ export default function CheckoutPage() {
         <div className="flex justify-center">
           <img src="/logo-salta.png" alt="Logo Salta" className="h-11 w-auto" />
         </div>
-        <p className="text-center text-xs uppercase tracking-[0.2em] text-emerald-200">Checkout</p>
-        <h1 className="mt-3 text-center text-3xl font-semibold tracking-tight">Mercado Pago</h1>
-        <p className="mt-2 text-center text-sm text-slate-300">
-          Crea una preferencia de pago y usa tus tarjetas de prueba en el checkout de Mercado Pago.
-        </p>
+        <h1 className="mt-4 text-center text-3xl font-semibold tracking-tight">Pagar</h1>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Concepto</span>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Email del comprador (opcional)</span>
-            <input
-              type="email"
-              value={payerEmail}
-              onChange={(e) => setPayerEmail(e.target.value)}
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-              placeholder="test_user@test.com"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Patente</span>
-            <input
-              value={plate}
-              onChange={(e) => setPlate(e.target.value.toUpperCase())}
-              placeholder="AA123BB"
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Zona/cuadra (opcional)</span>
-            <input
-              value={zoneId}
-              onChange={(e) => setZoneId(e.target.value)}
-              placeholder="ZONA-01"
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Cantidad</span>
-            <input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Monto unitario (ARS)</span>
-            <input
-              type="number"
-              min={1}
-              step="1"
-              value={unitPrice}
-              onChange={(e) => setUnitPrice(Number(e.target.value))}
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-slate-300">Duracion (minutos)</span>
-            <input
-              type="number"
-              min={1}
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(Number(e.target.value))}
-              className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3"
-            />
-          </label>
+        {/* Resumen de pago — solo lectura */}
+        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-900/60 divide-y divide-slate-800">
+          <div className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="text-slate-400">Concepto</span>
+            <span className="font-medium text-slate-100">{title}</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="text-slate-400">Precio por hora</span>
+            <span className="font-medium text-slate-100">${unitPrice.toLocaleString("es-AR")} ARS</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="text-slate-400">Duración</span>
+            <span className="font-medium text-slate-100">
+              {durationMinutes >= 60
+                ? `${Math.floor(durationMinutes / 60)}h${durationMinutes % 60 > 0 ? ` ${durationMinutes % 60}min` : ""}`
+                : `${durationMinutes} min`}
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="text-slate-400">Total</span>
+            <span className="text-lg font-semibold text-emerald-300">${(unitPrice * quantity).toLocaleString("es-AR")} ARS</span>
+          </div>
         </div>
 
+        {/* Patente — único campo editable */}
+        <label className="mt-4 flex flex-col gap-1 text-sm">
+          <span className="text-slate-300">Patente</span>
+          <input
+            value={plate}
+            onChange={(e) => setPlate(e.target.value.toUpperCase())}
+            placeholder="AA123BB"
+            className="h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 text-slate-100"
+          />
+        </label>
+
         <div className="glass-panel mt-4 rounded-lg p-3">
-          <p className="text-xs text-slate-300">Modo de checkout</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setPaymentMode("sandbox")}
-              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
-                paymentMode === "sandbox"
-                  ? "border-amber-500/60 bg-amber-500/15 text-amber-300"
-                  : "border-slate-700 text-slate-300"
-              }`}
-            >
-              Sandbox (pruebas)
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMode("production")}
-              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
-                paymentMode === "production"
-                  ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
-                  : "border-slate-700 text-slate-300"
-              }`}
-            >
-              Produccion
-            </button>
-          </div>
-          {paymentMode === "sandbox" && (
-            <p className="mt-2 text-xs text-amber-300">
-              En Sandbox, comprador y vendedor deben ser cuentas de prueba para evitar error de partes mezcladas.
-            </p>
-          )}
-          {paymentMode === "production" && !lastInitPoint && (lastInitPoint || lastSandboxPoint) && (
-            <p className="mt-2 text-xs text-rose-300">No hay link de produccion disponible para esta preferencia.</p>
-          )}
-          {paymentMode === "sandbox" && !lastSandboxPoint && (lastInitPoint || lastSandboxPoint) && (
+          <p className="text-xs text-amber-300">
+            Modo fijo: Sandbox (pruebas). Produccion deshabilitada hasta configurar credenciales reales.
+          </p>
+          {!lastSandboxPoint && (
             <p className="mt-2 text-xs text-rose-300">No hay link sandbox disponible para esta preferencia.</p>
-          )}
-          {linksAreSame && (
-            <p className="mt-2 text-xs text-amber-300">
-              Tu credencial actual devuelve la misma URL para Sandbox y Produccion. No hay separacion real en este entorno.
-            </p>
           )}
         </div>
 
@@ -374,7 +271,7 @@ export default function CheckoutPage() {
             disabled={loading || !normalizedPlate}
             className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-5 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
           >
-            {loading ? "Creando preferencia..." : "Generar checkout"}
+            {loading ? "Procesando..." : "Pagar"}
           </button>
         </div>
 
@@ -390,18 +287,17 @@ export default function CheckoutPage() {
             onClick={() => {
               setLoading(false);
               loadingSinceRef.current = null;
-              setLastInitPoint("");
               setLastSandboxPoint("");
               setQrDataUrl("");
-              setStatusMsg("Checkout reiniciado. Puedes generar una nueva preferencia.");
+              setStatusMsg("Reiniciado. Puedes generar un nuevo pago.");
             }}
             className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
           >
-            Reiniciar checkout
+            Reiniciar
           </button>
         </div>
 
-        {(lastSandboxPoint || lastInitPoint) && (
+        {lastSandboxPoint && (
           <div className="mt-4 flex flex-col items-center gap-2">
             <a
               href={hasSelectedUrl ? selectedUrl : undefined}
@@ -442,7 +338,7 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {(lastInitPoint || lastSandboxPoint) && (
+        {lastSandboxPoint && (
           <div className="glass-panel mt-5 rounded-xl p-4 text-center">
             <p className="text-sm font-medium text-slate-200">QR de pago</p>
             <p className="mt-1 text-xs text-slate-300">

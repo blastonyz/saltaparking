@@ -70,8 +70,7 @@ export default function Home() {
           )}
         </div>
 
-        <p className="mt-4 text-center text-xs uppercase tracking-[0.22em] text-emerald-300">ParkApp Salta</p>
-        <h1 className="mt-2 text-center text-4xl font-semibold tracking-tight">SEM Salta</h1>
+        <h1 className="mt-4 text-center text-4xl font-semibold tracking-tight text-white">Salta Parkin</h1>
 
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button
@@ -140,20 +139,21 @@ export default function Home() {
           </div>
         )}
 
-        {showSessionPopup && isAuthenticated && (
-          <div className="fixed bottom-5 right-5 z-50 w-full max-w-xs rounded-xl border border-emerald-500/40 bg-slate-900/95 p-4 shadow-xl">
-            <p className="text-sm font-medium text-emerald-300">Sesion iniciada</p>
-            <p className="mt-1 text-xs text-slate-300">Conectado como {session?.user?.email}</p>
-            <button
-              type="button"
-              onClick={() => setShowSessionPopup(false)}
-              className="mt-3 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
-            >
-              Cerrar
-            </button>
-          </div>
-        )}
       </main>
+
+      {showSessionPopup && isAuthenticated && (
+        <div className="fixed right-5 top-5 z-[60] w-full max-w-xs rounded-xl border border-emerald-500/40 bg-slate-900/95 p-4 shadow-xl">
+          <p className="text-sm font-medium text-emerald-300">Sesion iniciada</p>
+          <p className="mt-1 text-xs text-slate-300">Conectado como {session?.user?.email}</p>
+          <button
+            type="button"
+            onClick={() => setShowSessionPopup(false)}
+            className="mt-3 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
     </div>
   );
 }

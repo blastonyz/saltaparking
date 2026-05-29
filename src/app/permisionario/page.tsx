@@ -360,34 +360,44 @@ export default function PermisionarioPage() {
                 <p className="text-xs text-amber-300">
                   Zona: {zone.zoneId || "-"} - ${zone.ratePerHour}/h
                 </p>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const baseUrl = window.location.origin;
-                    const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
-                    const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
-                    setQrZoneId(zone.id);
-                    setQrDataUrl(qr);
-                    setLastGeneratedLink(checkoutUrl);
-                  }}
-                  className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
-                >
-                  QR pasarela
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const baseUrl = window.location.origin;
-                    const transferUrl = `${baseUrl}/transfer?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}&alias=${encodeURIComponent(transferAlias)}&cbu=${encodeURIComponent(transferCbu)}&owner=${encodeURIComponent(transferOwner)}`;
-                    const qr = await QRCode.toDataURL(transferUrl, { width: 260, margin: 1 });
-                    setQrZoneId(`${zone.id}-transfer`);
-                    setQrDataUrl(qr);
-                    setLastGeneratedLink(transferUrl);
-                  }}
-                  className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-cyan-500/40 px-2 text-xs text-cyan-300"
-                >
-                  QR transferencia directa
-                </button>
+                <div className="mt-3 flex justify-around gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const baseUrl = window.location.origin;
+                      const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
+                      const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
+                      setQrZoneId(zone.id);
+                      setQrDataUrl(qr);
+                      setLastGeneratedLink(checkoutUrl);
+                    }}
+                    className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-emerald-500/50 bg-emerald-500/10 py-3 text-emerald-300 transition hover:bg-emerald-500/20 active:scale-95"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                      <path d="M14 14h2v2h-2z"/><path d="M18 14h3v3h-3z"/><path d="M14 18h2v3h-2z"/><path d="M18 19v2h3"/>
+                    </svg>
+                    <span className="text-xs font-medium">QR pasarela</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const baseUrl = window.location.origin;
+                      const transferUrl = `${baseUrl}/transfer?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}&alias=${encodeURIComponent(transferAlias)}&cbu=${encodeURIComponent(transferCbu)}&owner=${encodeURIComponent(transferOwner)}`;
+                      const qr = await QRCode.toDataURL(transferUrl, { width: 260, margin: 1 });
+                      setQrZoneId(`${zone.id}-transfer`);
+                      setQrDataUrl(qr);
+                      setLastGeneratedLink(transferUrl);
+                    }}
+                    className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-cyan-500/50 bg-cyan-500/10 py-3 text-cyan-300 transition hover:bg-cyan-500/20 active:scale-95"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/>
+                    </svg>
+                    <span className="text-xs font-medium">QR transferencia</span>
+                  </button>
+                </div>
                 
               </li>
             ))}
