@@ -6,6 +6,7 @@ import { getMongoCollection } from "@/lib/mongodb";
 type PaymentDoc = {
   plate?: string;
   status?: "approved" | "pending" | "rejected";
+  paymentMethod?: string;
   amount?: number;
   paidAt?: Date;
   expiresAt?: Date;
@@ -60,23 +61,32 @@ export async function GET(req: Request) {
   const expiresAt = latest.expiresAt ? new Date(latest.expiresAt).getTime() : null;
   const approved = latest.status === "approved";
   const expired = expiresAt != null ? expiresAt < now : false;
+  const isCashRequest = latest.paymentMethod === "cash_request";
   const hasDebt = !approved || expired;
+
+  let reason: string;
+  if (!hasDebt) {
+    reason = "Pago vigente";
+  } else if (isCashRequest && !expired) {
+    reason = "Pago en efectivo solicitado - cobrar al conductor";
+  } else if (expired) {
+    reason = "Pago vencido";
+  } else {
+    reason = "Pago no aprobado";
+  }
 
   return NextResponse.json(
     {
       plate,
       hasPayment: true,
       paymentStatus: latest.status || "unknown",
+      paymentMethod: latest.paymentMethod ?? null,
       hasDebt,
       amount: latest.amount ?? null,
       paidAt: latest.paidAt ?? null,
       expiresAt: latest.expiresAt ?? null,
       zoneId: latest.zoneId ?? null,
-      reason: hasDebt
-        ? expired
-          ? "Pago vencido"
-          : "Pago no aprobado"
-        : "Pago vigente",
+      reason,
     },
     {
       headers: {
