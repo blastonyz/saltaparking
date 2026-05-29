@@ -35,6 +35,17 @@ export default function CheckoutPage() {
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextTitle = params.get("title");
+    const nextRate = params.get("unitPrice");
+    const nextZone = params.get("zoneId");
+
+    if (nextTitle) setTitle(nextTitle);
+    if (nextRate && Number.isFinite(Number(nextRate))) setUnitPrice(Number(nextRate));
+    if (nextZone) setZoneId(nextZone);
+  }, []);
+
   function clearWalletContainer() {
     const container = document.getElementById("wallet_container");
     if (container) {

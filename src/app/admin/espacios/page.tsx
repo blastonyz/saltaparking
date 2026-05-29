@@ -14,6 +14,7 @@ type SpaceRow = {
   totalSpots: number;
   ratePerHour: number;
   zoneId: string | null;
+  assignedPermisionarioEmail?: string | null;
   updatedAt: string;
 };
 
@@ -32,6 +33,7 @@ export default function AdminEspaciosPage() {
   const [availableSpots, setAvailableSpots] = useState("0");
   const [totalSpots, setTotalSpots] = useState("0");
   const [ratePerHour, setRatePerHour] = useState("0");
+  const [assignedPermisionarioEmail, setAssignedPermisionarioEmail] = useState("");
 
   useEffect(() => {
     if (sessionStatus === "authenticated" && session?.user?.role === "admin") {
@@ -67,6 +69,7 @@ export default function AdminEspaciosPage() {
         availableSpots: Number(availableSpots),
         totalSpots: Number(totalSpots),
         ratePerHour: Number(ratePerHour),
+        assignedPermisionarioEmail,
       }),
     });
 
@@ -85,6 +88,7 @@ export default function AdminEspaciosPage() {
     setAvailableSpots("0");
     setTotalSpots("0");
     setRatePerHour("0");
+    setAssignedPermisionarioEmail("");
     await fetchSpaces();
   }
 
@@ -175,6 +179,7 @@ export default function AdminEspaciosPage() {
             <input value={availableSpots} onChange={(e) => setAvailableSpots(e.target.value)} placeholder="Disponibles" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
             <input value={totalSpots} onChange={(e) => setTotalSpots(e.target.value)} placeholder="Totales" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
             <input value={ratePerHour} onChange={(e) => setRatePerHour(e.target.value)} placeholder="Tarifa/h" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
+            <input value={assignedPermisionarioEmail} onChange={(e) => setAssignedPermisionarioEmail(e.target.value)} placeholder="Email permisionario (opcional)" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
           </div>
           <button
             type="button"
@@ -195,6 +200,7 @@ export default function AdminEspaciosPage() {
                   <th className="px-2 py-1 text-left">Nombre</th>
                   <th className="px-2 py-1 text-left">Zona</th>
                   <th className="px-2 py-1 text-left">Direccion</th>
+                  <th className="px-2 py-1 text-left">Permisionario</th>
                   <th className="px-2 py-1 text-left">Coords</th>
                   <th className="px-2 py-1 text-left">Disponibles</th>
                   <th className="px-2 py-1 text-left">Tarifa</th>
@@ -206,6 +212,7 @@ export default function AdminEspaciosPage() {
                     <td className="px-2 py-1">{row.name}</td>
                     <td className="px-2 py-1">{row.zoneId || "-"}</td>
                     <td className="px-2 py-1">{row.address}</td>
+                    <td className="px-2 py-1">{row.assignedPermisionarioEmail || "-"}</td>
                     <td className="px-2 py-1">{row.lat.toFixed(5)}, {row.lng.toFixed(5)}</td>
                     <td className="px-2 py-1">{row.availableSpots}/{row.totalSpots}</td>
                     <td className="px-2 py-1">${row.ratePerHour}</td>
@@ -213,7 +220,7 @@ export default function AdminEspaciosPage() {
                 ))}
                 {!loading && spaces.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-2 py-3 text-center text-slate-400">No hay espacios cargados.</td>
+                    <td colSpan={7} className="px-2 py-3 text-center text-slate-400">No hay espacios cargados.</td>
                   </tr>
                 )}
               </tbody>

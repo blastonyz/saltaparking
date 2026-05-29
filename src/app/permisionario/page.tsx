@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { useAuth } from "@/app/context/auth-context";
 
 type PlateStatusResponse = {
@@ -16,15 +17,39 @@ type PlateStatusResponse = {
   reason: string;
 };
 
+type ZoneRow = {
+  id: string;
+  name: string;
+  address: string;
+  zoneId: string | null;
+  ratePerHour: number;
+};
+
 export default function PermisionarioPage() {
   const { sessionStatus, session } = useAuth();
   const [plate, setPlate] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<PlateStatusResponse | null>(null);
+  const [zones, setZones] = useState<ZoneRow[]>([]);
+  const [qrZoneId, setQrZoneId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState("");
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
+
+  useEffect(() => {
+    if (!isAuthenticated || (role !== "permisionario" && role !== "admin")) return;
+
+    async function loadZones() {
+      const response = await fetch("/api/permisionario/zones", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = (await response.json()) as { zones: ZoneRow[] };
+      setZones(data.zones);
+    }
+
+    void loadZones();
+  }, [isAuthenticated, role]);
 
   async function checkPlate() {
     if (!plate.trim()) {
@@ -117,6 +142,55 @@ export default function PermisionarioPage() {
             )}
           </div>
         )}
+
+        <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+          <p className="text-sm font-medium text-slate-200">QR por zona</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Genera un QR que abre checkout preconfigurado para una zona/cuadra.
+          </p>
+
+          <ul className="mt-3 space-y-2 text-sm">
+            {zones.map((zone) => (
+              <li key={zone.id} className="rounded-md border border-slate-800 p-2">
+                <p className="text-slate-100">{zone.name}</p>
+                <p className="text-xs text-slate-400">{zone.address}</p>
+                <p className="text-xs text-amber-300">
+                  Zona: {zone.zoneId || "-"} - ${zone.ratePerHour}/h
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const baseUrl = window.location.origin;
+                    const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}`;
+                    const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
+                    setQrZoneId(zone.id);
+                    setQrDataUrl(qr);
+                  }}
+                  className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
+                >
+                  Generar QR
+                </button>
+              </li>
+            ))}
+            {zones.length === 0 && (
+              <li className="text-xs text-slate-400">No hay zonas asignadas para generar QR.</li>
+            )}
+          </ul>
+
+          {qrDataUrl && (
+            <div className="mt-4 rounded-md border border-slate-800 p-3">
+              <p className="text-xs text-slate-300">QR generado {qrZoneId ? `(zona ${qrZoneId})` : ""}</p>
+              <img src={qrDataUrl} alt="QR de zona" className="mt-2 h-[220px] w-[220px] rounded-md bg-white p-2" />
+              <a
+                href={qrDataUrl}
+                download="zona-qr.png"
+                className="mt-2 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
+              >
+                Descargar QR
+              </a>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

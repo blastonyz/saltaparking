@@ -229,6 +229,29 @@ export default function UsuarioPage() {
         providerStatus?: string;
         providerError?: string | null;
       };
+      // Fallback to client-side geocoder when server key/restrictions fail.
+      if (window.google && mapRef.current) {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: addressQuery.trim() }, async (results, status) => {
+          if (status !== "OK" || !results || !results[0]) {
+            setStatusMsg(
+              `No se pudo geocodificar la direccion (${data.providerStatus || data.error || "error"})`
+            );
+            return;
+          }
+
+          const location = results[0].geometry.location;
+          const lat = location.lat();
+          const lng = location.lng();
+          mapRef.current?.setCenter({ lat, lng });
+          mapRef.current?.setZoom(16);
+          setPosition({ lat, lng });
+          setStatusMsg(`Direccion encontrada (fallback): ${addressQuery.trim()}`);
+          await fetchSpaces(lat, lng);
+        });
+        return;
+      }
+
       setStatusMsg(
         `No se pudo geocodificar la direccion (${data.providerStatus || data.error || "error"})`
       );
@@ -347,6 +370,12 @@ export default function UsuarioPage() {
                   {item.distanceMeters != null && (
                     <p className="text-xs text-slate-400">Distancia: {Math.round(item.distanceMeters)} m</p>
                   )}
+                  <Link
+                    href={`/checkout?title=${encodeURIComponent(item.name)}&unitPrice=${item.ratePerHour}&zoneId=${encodeURIComponent(item.zoneId || "")}`}
+                    className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
+                  >
+                    Elegir y pagar
+                  </Link>
                 </li>
               ))}
               {spaces.length === 0 && (

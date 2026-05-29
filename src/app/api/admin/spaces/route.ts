@@ -12,6 +12,7 @@ type ParkingSpaceDoc = {
   totalSpots: number;
   ratePerHour: number;
   zoneId: string | null;
+  assignedPermisionarioEmail?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -26,6 +27,7 @@ type CreateSpaceBody = {
   totalSpots?: number;
   ratePerHour?: number;
   zoneId?: string;
+  assignedPermisionarioEmail?: string;
 };
 
 const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
@@ -38,6 +40,7 @@ const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
     totalSpots: 20,
     ratePerHour: 900,
     zoneId: "BAL-500",
+    assignedPermisionarioEmail: null,
   },
   {
     name: "Mitre 300",
@@ -48,6 +51,7 @@ const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
     totalSpots: 14,
     ratePerHour: 850,
     zoneId: "MIT-300",
+    assignedPermisionarioEmail: null,
   },
   {
     name: "Caseros 700",
@@ -58,6 +62,7 @@ const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
     totalSpots: 16,
     ratePerHour: 800,
     zoneId: "CAS-700",
+    assignedPermisionarioEmail: null,
   },
 ];
 
@@ -119,6 +124,7 @@ export async function POST(req: Request) {
   const name = body.name?.trim();
   const address = body.address?.trim();
   const zoneId = body.zoneId?.trim() || null;
+  const assignedPermisionarioEmail = body.assignedPermisionarioEmail?.trim().toLowerCase() || null;
   const lat = Number(body.lat);
   const lng = Number(body.lng);
   const availableSpots = Number(body.availableSpots ?? 0);
@@ -151,6 +157,7 @@ export async function POST(req: Request) {
     totalSpots,
     ratePerHour,
     zoneId,
+    assignedPermisionarioEmail,
     createdAt: now,
     updatedAt: now,
   });
