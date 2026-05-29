@@ -69,7 +69,7 @@ export default function PermisionarioPage() {
   const [cashAmount, setCashAmount] = useState(0);
   const [cashLoading, setCashLoading] = useState(false);
   const [entryLoading, setEntryLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"inicio" | "cobros" | "zona" | "perfil">("inicio");
+  const [activeTab, setActiveTab] = useState<"inicio" | "cobros" | "perfil">("inicio");
   const [zoneAvailability, setZoneAvailability] = useState<"disponible" | "pocos" | "lleno" | null>(null);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
 
@@ -240,7 +240,7 @@ export default function PermisionarioPage() {
                 <button
                   type="button"
                   onClick={() => { setPlate(req.plate); if (req.zoneId) setCashZoneId(req.zoneId); }}
-                  className="h-9 px-3 rounded-lg bg-blue-600 text-white text-xs font-semibold active:scale-95 transition-transform"
+                  className="h-9 px-3 rounded-xl bg-blue-600 text-white text-xs font-semibold active:scale-95 transition-transform"
                 >
                   Atender
                 </button>
@@ -457,7 +457,7 @@ export default function PermisionarioPage() {
                       setQrDataUrl(qr);
                       setLastGeneratedLink(transferUrl);
                     }}
-                    className="mt-2 inline-flex h-9 items-center rounded-lg border border-emerald-500/40 px-3 text-xs text-emerald-300"
+                    className="mt-2 inline-flex h-9 items-center rounded-xl border border-emerald-500/40 px-3 text-xs text-emerald-300"
                   >
                     Generar QR manual (transferencia)
                   </button>
@@ -469,7 +469,7 @@ export default function PermisionarioPage() {
                   <img src={qrDataUrl} alt="QR de zona" className="mx-auto mt-2 h-[220px] w-[220px] rounded-md bg-white p-2" />
                   {lastGeneratedLink && <p className="mt-2 break-all text-[11px] text-slate-400">{lastGeneratedLink}</p>}
                   <div className="mt-2 flex justify-center">
-                    <a href={qrDataUrl} download="zona-qr.png" className="inline-flex h-9 items-center rounded-lg border border-slate-700 px-3 text-xs text-slate-300">Descargar QR</a>
+                    <a href={qrDataUrl} download="zona-qr.png" className="inline-flex h-9 items-center rounded-xl border border-slate-700 px-3 text-xs text-slate-300">Descargar QR</a>
                   </div>
                 </div>
               )}
@@ -568,9 +568,8 @@ export default function PermisionarioPage() {
           [
             { key: "inicio",  label: "Inicio",  path: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" },
             { key: "cobros",  label: "Cobros",  path: "M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" },
-            { key: "zona",    label: "Zona",    path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" },
             { key: "perfil",  label: "Perfil",  path: "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" },
-          ] as { key: "inicio" | "cobros" | "zona" | "perfil"; label: string; path: string }[]
+          ] as { key: "inicio" | "cobros" | "perfil"; label: string; path: string }[]
         ).map(({ key, label, path }) => (
           <button
             key={key}

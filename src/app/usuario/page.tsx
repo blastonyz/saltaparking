@@ -718,7 +718,7 @@ export default function UsuarioPage() {
             </div>
 
             <div className="glass-panel rounded-xl p-3 flex flex-col gap-3">
-              <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 p-3">
+              <div className="rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-3">
                 <p className="text-xs text-slate-400">Seleccion actual</p>
                 <p className="mt-1 text-sm text-slate-100">
                   {selectedSpace
@@ -735,12 +735,12 @@ export default function UsuarioPage() {
                     {selectedSpace.availableSpots > 0 ? (
                       <Link
                         href={`/checkout?title=${encodeURIComponent(selectedSpace.name)}&unitPrice=${selectedSpace.ratePerHour}&zoneId=${encodeURIComponent(selectedSpace.zoneId || "")}`}
-                        className="flex-1 inline-flex h-9 items-center justify-center rounded-lg bg-emerald-500 px-3 text-xs font-semibold text-slate-950"
+                        className="flex-1 inline-flex h-9 items-center justify-center rounded-xl bg-emerald-500 px-3 text-xs font-semibold text-slate-950"
                       >
                         Pagar cuadra
                       </Link>
                     ) : (
-                      <span className="inline-flex h-9 items-center justify-center rounded-lg border border-rose-500/40 px-3 text-xs text-rose-300">
+                      <span className="inline-flex h-9 items-center justify-center rounded-xl border border-rose-500/40 px-3 text-xs text-rose-300">
                         Cuadra completa
                       </span>
                     )}
@@ -762,7 +762,7 @@ export default function UsuarioPage() {
                             mapRef.current?.setZoom(17);
                             setStatusMsg(`Cuadra seleccionada: ${item.name}`);
                           }}
-                          className={`w-full rounded-lg px-3 py-2 text-left text-xs transition ${
+                          className={`w-full rounded-xl px-3 py-2 text-left text-xs transition ${
                             selectedSpace?.id === item.id
                               ? "bg-emerald-950/40 border border-emerald-500/50 text-emerald-300"
                               : "border border-slate-800 text-slate-300 hover:bg-slate-800/60"
@@ -797,7 +797,7 @@ function PageShell({ children }: { children: string }) {
         <p className="text-sm text-slate-300">{children}</p>
         <Link
           href="/"
-          className="mt-4 inline-flex h-10 items-center rounded-lg border border-slate-700 px-3 text-sm"
+          className="mt-4 inline-flex h-10 items-center rounded-xl border border-slate-700 px-3 text-sm"
         >
           Volver al inicio
         </Link>
