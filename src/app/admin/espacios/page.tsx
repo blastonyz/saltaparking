@@ -15,6 +15,10 @@ type MapsMarker = {
   setPosition?: (pos: { lat: number; lng: number }) => void;
 };
 
+type MapsPolygon = {
+  setMap: (map: unknown | null) => void;
+};
+
 type MapsMouseEvent = {
   latLng?: {
     lat: () => number;
@@ -46,6 +50,16 @@ type GoogleMapsApi = {
         handler: (event: MapsMouseEvent) => void
       ) => void;
     };
+    Polygon: new (params: {
+      map: MapsMap;
+      paths: Array<{ lat: number; lng: number }>;
+      strokeColor: string;
+      strokeOpacity: number;
+      strokeWeight: number;
+      fillColor: string;
+      fillOpacity: number;
+      clickable?: boolean;
+    }) => MapsPolygon;
   };
 };
 
@@ -89,7 +103,7 @@ export default function AdminEspaciosPage() {
   const [blockPolygonText, setBlockPolygonText] = useState("");
   const [segmentFrom, setSegmentFrom] = useState("");
   const [segmentTo, setSegmentTo] = useState("");
-  const [segmentWidthMeters, setSegmentWidthMeters] = useState("12");
+  const [segmentWidthMeters, setSegmentWidthMeters] = useState("7");
   const [mapsKey, setMapsKey] = useState("");
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState("");
@@ -100,6 +114,8 @@ export default function AdminEspaciosPage() {
   const mapContainerId = "admin-spaces-map";
   const [mapInstance, setMapInstance] = useState<MapsMap | null>(null);
   const captureTargetRef = useRef<"from" | "to">("from");
+  const zonePolygonsRef = useRef<MapsPolygon[]>([]);
+  const previewPolygonRef = useRef<MapsPolygon | null>(null);
 
   function parseBlockPolygon(text: string): Array<{ lat: number; lng: number }> {
     const normalized = text.trim();
@@ -191,6 +207,11 @@ export default function AdminEspaciosPage() {
       return;
     }
 
+    if (width > 20) {
+      setMessage("Ancho muy grande para calle. Prueba entre 6 y 14 metros.");
+      return;
+    }
+
     const polygon = buildSegmentPolygon(from, to, width);
     if (polygon.length < 3) {
       setMessage("No se pudo generar poligono del tramo");
@@ -204,7 +225,7 @@ export default function AdminEspaciosPage() {
     setBlockPolygonText(
       polygon.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join("; ")
     );
-    setMessage("Tramo aplicado: centro y poligono autocompletados");
+    setMessage("Tramo aplicado: poligono ajustado a ancho de calle");
   }
 
   function formatLatLngPoint(point: { lat: number; lng: number }): string {
@@ -303,6 +324,69 @@ export default function AdminEspaciosPage() {
     if (!parsed) return;
     toMarker.setPosition?.(parsed);
   }, [segmentTo, toMarker]);
+
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    zonePolygonsRef.current.forEach((polygon) => polygon.setMap(null));
+    zonePolygonsRef.current = [];
+
+    const googleApi = (window as Window & { google?: GoogleMapsApi }).google;
+    if (!googleApi) return;
+
+    for (const space of spaces) {
+      const polygon = space.blockPolygon;
+      if (!polygon || polygon.length < 3) continue;
+
+      const color = getZoneColor(space.zoneId || space.name || "ZONA");
+      const painted = new googleApi.maps.Polygon({
+        map: mapInstance,
+        paths: polygon,
+        strokeColor: color,
+        strokeOpacity: 0.95,
+        strokeWeight: 2,
+        fillColor: color,
+        fillOpacity: 0.22,
+        clickable: false,
+      });
+
+      zonePolygonsRef.current.push(painted);
+    }
+  }, [mapInstance, spaces]);
+
+  useEffect(() => {
+    const googleApi = (window as Window & { google?: GoogleMapsApi }).google;
+    if (!mapInstance || !googleApi) return;
+
+    if (previewPolygonRef.current) {
+      previewPolygonRef.current.setMap(null);
+      previewPolygonRef.current = null;
+    }
+
+    const from = parseLatLng(segmentFrom);
+    const to = parseLatLng(segmentTo);
+    const width = Number(segmentWidthMeters);
+
+    if (!from || !to || !Number.isFinite(width) || width <= 0) {
+      return;
+    }
+
+    const previewPolygon = buildSegmentPolygon(from, to, width);
+    if (previewPolygon.length < 3) return;
+
+    const preview = new googleApi.maps.Polygon({
+      map: mapInstance,
+      paths: previewPolygon,
+      strokeColor: "#facc15",
+      strokeOpacity: 1,
+      strokeWeight: 3,
+      fillColor: "#facc15",
+      fillOpacity: 0.2,
+      clickable: false,
+    });
+
+    previewPolygonRef.current = preview;
+  }, [mapInstance, segmentFrom, segmentTo, segmentWidthMeters]);
 
   async function fetchSpaces() {
     setLoading(true);
@@ -525,6 +609,9 @@ export default function AdminEspaciosPage() {
               </button>
             </div>
             <div id={mapContainerId} className="mt-3 h-64 rounded-lg border border-slate-800 bg-slate-950" />
+            <p className="mt-2 text-[11px] text-yellow-300">
+              Previsualizacion actual: amarillo. Zonas guardadas: colores varios.
+            </p>
             {mapsError && <p className="mt-2 text-xs text-amber-300">{mapsError}</p>}
           </div>
           <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
@@ -556,6 +643,9 @@ export default function AdminEspaciosPage() {
                 Aplicar tramo
               </button>
             </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              Sugerido: 6-8 m calle comun, 10-14 m avenida.
+            </p>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
@@ -624,4 +714,14 @@ export default function AdminEspaciosPage() {
       </main>
     </div>
   );
+}
+
+function getZoneColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 70%, 52%)`;
 }

@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { useAuth } from "@/app/context/auth-context";
 
 declare global {
   interface Window {
@@ -22,6 +23,7 @@ type PreferenceResponse = {
 };
 
 export default function CheckoutPage() {
+  const { session } = useAuth();
   const [title, setTitle] = useState("Hora de estacionamiento");
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(1000);
@@ -34,6 +36,14 @@ export default function CheckoutPage() {
   const [lastInitPoint, setLastInitPoint] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
+
+  const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
+
+  useEffect(() => {
+    if (session?.user?.plate && !normalizedPlate) {
+      setPlate(String(session.user.plate).toUpperCase());
+    }
+  }, [session?.user?.plate, normalizedPlate]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -65,6 +75,26 @@ export default function CheckoutPage() {
   );
 
   async function handleCreatePreference() {
+    if (!normalizedPlate) {
+      setStatusMsg("Patente requerida para generar el pago");
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setStatusMsg("Cantidad invalida");
+      return;
+    }
+
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      setStatusMsg("Monto invalido");
+      return;
+    }
+
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      setStatusMsg("Duracion invalida");
+      return;
+    }
+
     setLoading(true);
     loadingSinceRef.current = Date.now();
     setStatusMsg("");
@@ -81,7 +111,7 @@ export default function CheckoutPage() {
           quantity,
           unitPrice,
           payerEmail,
-          plate,
+          plate: normalizedPlate,
           zoneId,
           durationMinutes,
         }),
@@ -286,11 +316,15 @@ export default function CheckoutPage() {
         <button
           type="button"
           onClick={handleCreatePreference}
-          disabled={loading}
+          disabled={loading || !normalizedPlate}
           className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-5 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
         >
           {loading ? "Creando preferencia..." : "Generar checkout"}
         </button>
+
+        {!normalizedPlate && (
+          <p className="mt-2 text-xs text-amber-300">Completa la patente para habilitar el pago.</p>
+        )}
 
         {!!statusMsg && <p className="mt-4 text-sm text-slate-300">{statusMsg}</p>}
 
