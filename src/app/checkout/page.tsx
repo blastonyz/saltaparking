@@ -120,17 +120,11 @@ export default function CheckoutPage() {
       const sandboxPoint = data.sandboxInitPoint || "";
       setLastSandboxPoint(sandboxPoint);
 
-      const diag = data.diagnostics;
-      const diagText = diag
-        ? ` [server token: ${diag.accessTokenType || "?"}, public key: ${diag.publicKeyType || "?"}]`
-        : "";
-
-      setStatusMsg(
-        sandboxPoint
-          ? "Listo. Abre el link para completar el pago."
-          : "No se obtuvo link de pago."
-        + diagText
-      );
+      if (sandboxPoint) {
+        window.open(sandboxPoint, "_blank", "noopener,noreferrer");
+      } else {
+        setStatusMsg("No se obtuvo link de pago. Intenta nuevamente.");
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setStatusMsg("La solicitud tardó demasiado. Intenta nuevamente.");
@@ -144,7 +138,6 @@ export default function CheckoutPage() {
   }
 
   const selectedUrl = lastSandboxPoint;
-  const hasSelectedUrl = Boolean(selectedUrl);
 
   useEffect(() => {
     async function generateQr() {
@@ -255,15 +248,6 @@ export default function CheckoutPage() {
           />
         </label>
 
-        <div className="glass-panel mt-4 rounded-lg p-3">
-          <p className="text-xs text-amber-300">
-            Modo fijo: Sandbox (pruebas). Produccion deshabilitada hasta configurar credenciales reales.
-          </p>
-          {!lastSandboxPoint && (
-            <p className="mt-2 text-xs text-rose-300">No hay link sandbox disponible para esta preferencia.</p>
-          )}
-        </div>
-
         <div className="mt-6 flex justify-center">
           <button
             type="button"
@@ -279,62 +263,24 @@ export default function CheckoutPage() {
           <p className="mt-2 text-xs text-amber-300">Completa la patente para habilitar el pago.</p>
         )}
 
-        {!!statusMsg && <p className="mt-4 text-center text-sm text-slate-200">{statusMsg}</p>}
-
-        <div className="mt-3 flex justify-center">
-          <button
-            type="button"
-            onClick={() => {
-              setLoading(false);
-              loadingSinceRef.current = null;
-              setLastSandboxPoint("");
-              setQrDataUrl("");
-              setStatusMsg("Reiniciado. Puedes generar un nuevo pago.");
-            }}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
-          >
-            Reiniciar
-          </button>
-        </div>
+        {!!statusMsg && !lastSandboxPoint && (
+          <p className="mt-4 text-center text-sm text-slate-200">{statusMsg}</p>
+        )}
 
         {lastSandboxPoint && (
-          <div className="mt-4 flex flex-col items-center gap-2">
+          <div className="mt-4">
             <a
-              href={hasSelectedUrl ? selectedUrl : undefined}
+              href={selectedUrl}
               target="_blank"
               rel="noreferrer"
-              aria-disabled={!hasSelectedUrl}
-              className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm ${
-                hasSelectedUrl
-                  ? "border border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                  : "cursor-not-allowed border border-slate-700 text-slate-500"
-              }`}
+              className="flex h-16 w-full items-center justify-center rounded-xl bg-[#FFE600] transition hover:bg-yellow-300 active:scale-95"
             >
               <img
                 src="https://http2.mlstatic.com/storage/logos-api-admin/5c2a84d0-ccfc-11ef-b4ad-3f7be6b695b7-xl.png"
                 alt="Mercado Pago"
-                className="h-4 w-auto"
+                className="h-9 w-auto"
               />
-              Pagar con Mercado Pago
             </a>
-
-            <button
-              type="button"
-              disabled={!hasSelectedUrl}
-              onClick={async () => {
-                if (!selectedUrl) return;
-
-                try {
-                  await navigator.clipboard.writeText(selectedUrl);
-                  setStatusMsg("Link directo de Mercado Pago copiado.");
-                } catch {
-                  setStatusMsg("No se pudo copiar el link directo.");
-                }
-              }}
-              className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm disabled:opacity-50"
-            >
-              Copiar link directo
-            </button>
           </div>
         )}
 
@@ -355,33 +301,7 @@ export default function CheckoutPage() {
               <p className="mt-3 text-xs text-amber-300">No se pudo generar el QR.</p>
             )}
 
-            <div className="mt-3 flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!selectedUrl) return;
-                  try {
-                    await navigator.clipboard.writeText(selectedUrl);
-                    setStatusMsg("Link de pago copiado al portapapeles.");
-                  } catch {
-                    setStatusMsg("No se pudo copiar el link.");
-                  }
-                }}
-                className="inline-flex h-9 items-center rounded-md border border-slate-700 px-3 text-xs"
-              >
-                Copiar link
-              </button>
-
-              {qrDataUrl && (
-                <a
-                  href={qrDataUrl}
-                  download="pago-qr.png"
-                  className="inline-flex h-9 items-center rounded-md border border-slate-700 px-3 text-xs"
-                >
-                  Descargar QR
-                </a>
-              )}
-            </div>
+            <p className="mt-3 text-xs text-slate-400">Escaneá para pagar desde el celular</p>
           </div>
         )}
       </main>
