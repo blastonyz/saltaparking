@@ -81,12 +81,12 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        <div className="mt-7 flex flex-col items-center">
+        <div className="mx-auto mt-4 grid w-full max-w-xl">
           <Link
             href="/"
-            className="inline-flex h-10 items-center rounded-lg border border-white/35 bg-white/10 px-5 text-sm"
+            className="rounded-xl border border-white/25 bg-gradient-to-br from-slate-300/15 via-slate-400/10 to-slate-500/15 p-4 text-center transition hover:border-slate-400/60 hover:bg-slate-500/10"
           >
-            Volver al inicio
+            <p className="text-base font-semibold text-slate-100">Volver al inicio</p>
           </Link>
         </div>
       </main>
