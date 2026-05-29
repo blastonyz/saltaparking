@@ -13,10 +13,7 @@ export default function AppHeader() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-4 bg-slate-900/95 backdrop-blur border-b border-slate-800 shadow-sm">
       <Link href="/" className="flex items-center gap-2">
-        <img src="/logo-salta.png" alt="SaltaParking" className="h-8 w-auto" />
-        <span className="text-sm font-semibold text-slate-100 tracking-tight">
-          SaltaParking
-        </span>
+        <img src="/logo-salta.png" alt="SaltaParking" className="h-8 w-auto ml-4" />
       </Link>
 
       {sessionStatus === "authenticated" ? (

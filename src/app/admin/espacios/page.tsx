@@ -109,6 +109,7 @@ export default function AdminEspaciosPage() {
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState("");
   const [captureTarget, setCaptureTarget] = useState<"from" | "to">("from");
+  const [applySuccess, setApplySuccess] = useState(false);
   const [fromMarker, setFromMarker] = useState<MapsMarker | null>(null);
   const [toMarker, setToMarker] = useState<MapsMarker | null>(null);
 
@@ -227,6 +228,8 @@ export default function AdminEspaciosPage() {
       polygon.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join("; ")
     );
     setMessage("Tramo aplicado: poligono ajustado a ancho de calle");
+    setApplySuccess(true);
+    setTimeout(() => setApplySuccess(false), 2000);
   }
 
   function formatLatLngPoint(point: { lat: number; lng: number }): string {
@@ -583,93 +586,124 @@ export default function AdminEspaciosPage() {
 
         <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4 backdrop-blur">
           <p className="text-sm font-medium text-slate-200">Nuevo espacio</p>
-          <div className="mt-3 rounded-lg border border-white/20 bg-white/5 p-3">
-            <p className="text-xs text-slate-300">Captura en mapa (click para Desde/Hasta)</p>
-            <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 rounded-xl border border-white/20 bg-white/5 p-4">
+            <p className="text-sm font-medium text-slate-200 mb-3">Captura en mapa</p>
+
+            {/* Capture toggle buttons */}
+            <div className="flex gap-2 mb-3">
               <button
                 type="button"
                 onClick={() => setCaptureTarget("from")}
-                className={`h-9 rounded-lg border px-3 text-xs ${
+                className={`flex-1 h-11 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
                   captureTarget === "from"
-                    ? "border-emerald-500/60 text-emerald-300"
-                    : "border-slate-700"
+                    ? "border-emerald-500 bg-emerald-500 text-slate-950"
+                    : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                Capturar Desde
+                📍 Capturar Desde
               </button>
               <button
                 type="button"
                 onClick={() => setCaptureTarget("to")}
-                className={`h-9 rounded-lg border px-3 text-xs ${
+                className={`flex-1 h-11 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
                   captureTarget === "to"
-                    ? "border-cyan-500/60 text-cyan-300"
-                    : "border-slate-700"
+                    ? "border-cyan-500 bg-cyan-500 text-slate-950"
+                    : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                Capturar Hasta
+                🏁 Capturar Hasta
               </button>
             </div>
-            <div id={mapContainerId} className="mt-3 h-64 rounded-lg border border-white/20 bg-slate-950/60" />
-            <p className="mt-2 text-[11px] text-yellow-300">
-              Previsualizacion actual: amarillo. Zonas guardadas: colores varios.
-            </p>
-            {mapsError && <p className="mt-2 text-xs text-amber-300">{mapsError}</p>}
+
+            {/* Coordinate display */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="rounded-xl border border-emerald-700/40 bg-slate-900/60 px-3 py-2">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Desde</p>
+                <p className="mt-0.5 text-xs text-emerald-300 font-mono">{segmentFrom || "Pendiente"}</p>
+              </div>
+              <div className="rounded-xl border border-cyan-700/40 bg-slate-900/60 px-3 py-2">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Hasta</p>
+                <p className="mt-0.5 text-xs text-cyan-300 font-mono">{segmentTo || "Pendiente"}</p>
+              </div>
+            </div>
+
+            {/* Map */}
+            <div id={mapContainerId} className="h-[480px] rounded-xl border border-white/20 bg-slate-950/60" />
+            <p className="mt-2 text-[11px] text-yellow-300">Previsualización: amarillo · Guardadas: colores varios</p>
+            {mapsError && <p className="mt-1 text-xs text-rose-300">{mapsError}</p>}
           </div>
-          <div className="mt-3 rounded-lg border border-white/20 bg-white/5 p-3">
-            <p className="text-xs text-slate-300">Generador rapido por tramo de calle</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+          <div className="mt-3 rounded-xl border border-white/20 bg-white/5 p-4">
+            <p className="text-sm font-medium text-slate-200 mb-3">Generador de tramo</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-400">Ancho:</span>
+              {([["Calle (7m)", "7"], ["Avenida (12m)", "12"]] as [string, string][]).map(([label, val]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setSegmentWidthMeters(val)}
+                  className={`h-9 px-3 rounded-xl border text-xs font-medium transition-all active:scale-95 ${
+                    segmentWidthMeters === val
+                      ? "border-blue-500 bg-blue-500 text-white"
+                      : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
               <input
-                value={segmentFrom}
-                onChange={(e) => setSegmentFrom(e.target.value)}
-                placeholder="Desde lat,lng"
-                className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"
-              />
-              <input
-                value={segmentTo}
-                onChange={(e) => setSegmentTo(e.target.value)}
-                placeholder="Hasta lat,lng"
-                className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"
-              />
-              <input
+                type="number"
                 value={segmentWidthMeters}
                 onChange={(e) => setSegmentWidthMeters(e.target.value)}
-                placeholder="Ancho metros"
-                className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"
+                className="w-20 h-9 rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs text-slate-100"
               />
-              <button
-                type="button"
-                onClick={applySegmentGenerator}
-                className="h-10 rounded-lg border border-cyan-500/40 px-3 text-xs text-cyan-300"
-              >
-                Aplicar tramo
-              </button>
             </div>
-            <p className="mt-2 text-[11px] text-slate-400">
-              Sugerido: 6-8 m calle comun, 10-14 m avenida.
-            </p>
+            <button
+              type="button"
+              onClick={applySegmentGenerator}
+              className={`mt-3 w-full h-11 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+                applySuccess
+                  ? "bg-emerald-600 text-white"
+                  : "bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+              }`}
+            >
+              {applySuccess ? "✅ Tramo aplicado" : "Aplicar tramo"}
+            </button>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Direccion" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={zoneId} onChange={(e) => setZoneId(e.target.value)} placeholder="Zona" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="Lat" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="Lng" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={availableSpots} onChange={(e) => setAvailableSpots(e.target.value)} placeholder="Disponibles" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={totalSpots} onChange={(e) => setTotalSpots(e.target.value)} placeholder="Totales" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={ratePerHour} onChange={(e) => setRatePerHour(e.target.value)} placeholder="Tarifa/h" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
-            <input value={assignedPermisionarioEmail} onChange={(e) => setAssignedPermisionarioEmail(e.target.value)} placeholder="Email permisionario (opcional)" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Nombre</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Calle San Martin..." className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Dirección</label>
+              <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="San Martin 200-300" className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Zona</label>
+              <input value={zoneId} onChange={(e) => setZoneId(e.target.value)} placeholder="CENTRO" className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Disponibles</label>
+              <input type="number" value={availableSpots} onChange={(e) => setAvailableSpots(e.target.value)} className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Total espacios</label>
+              <input type="number" value={totalSpots} onChange={(e) => setTotalSpots(e.target.value)} className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Tarifa/hora (ARS)</label>
+              <input type="number" value={ratePerHour} onChange={(e) => setRatePerHour(e.target.value)} className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
+            <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-3">
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Email permisionario (opcional)</label>
+              <input value={assignedPermisionarioEmail} onChange={(e) => setAssignedPermisionarioEmail(e.target.value)} placeholder="inspector@example.com" className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
+            </div>
           </div>
-          <textarea
-            value={blockPolygonText}
-            onChange={(e) => setBlockPolygonText(e.target.value)}
-            placeholder="Poligono opcional: lat,lng; lat,lng; lat,lng"
-            className="mt-3 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs"
-          />
           <button
             type="button"
             onClick={createSpace}
             disabled={saving}
-            className="mt-3 inline-flex h-10 items-center rounded-lg border border-cyan-500/40 px-4 text-sm text-cyan-300"
+            className="mt-4 w-full h-12 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-base transition-all active:scale-95 hover:bg-emerald-400 disabled:opacity-60"
           >
             {saving ? "Guardando..." : "Crear espacio"}
           </button>

@@ -581,7 +581,7 @@ export default function UsuarioPage() {
         />
       )}
 
-      <main className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-4">
+      <main className="w-full max-w-lg lg:max-w-5xl mx-auto px-4 py-6 flex flex-col gap-4">
         {/* Active payment banner */}
         {activePayment?.hasActivePayment && (
           <div className="rounded-xl border border-emerald-600/40 bg-emerald-950/20 p-4 text-sm">
@@ -655,7 +655,7 @@ export default function UsuarioPage() {
           <button
             type="button"
             onClick={() => void selectFromMapCenter()}
-            className="flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 active:scale-95 transition-all hover:bg-emerald-500/20"
+            className="flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl bg-emerald-500 text-slate-950 border border-emerald-500 active:scale-95 transition-all hover:bg-emerald-400"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -667,8 +667,8 @@ export default function UsuarioPage() {
             onClick={() => setSelectionLock((prev) => !prev)}
             className={`flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl border active:scale-95 transition-all ${
               selectionLock
-                ? "border-blue-500/60 bg-blue-500/15 text-blue-300"
-                : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+                ? "border-blue-500 bg-blue-500 text-white hover:bg-blue-400"
+                : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
             }`}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -684,8 +684,8 @@ export default function UsuarioPage() {
             onClick={() => setMapAccordionOpen((prev) => !prev)}
             className={`flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-xl border active:scale-95 transition-all ${
               mapAccordionOpen
-                ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-300"
-                : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+                ? "border-cyan-500 bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+                : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
             }`}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -705,17 +705,7 @@ export default function UsuarioPage() {
 
         {/* Map accordion */}
         {mapAccordionOpen && (
-          <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-            <div
-              ref={mapContainerRef}
-              className="h-[420px] rounded-xl border border-slate-800 bg-slate-950"
-            >
-              {mapsScriptError && (
-                <div className="h-full w-full flex items-center justify-center p-6 text-center text-sm text-rose-300">
-                  {mapsScriptError}
-                </div>
-              )}
-            </div>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[300px_1fr]">
 
             <div className="glass-panel rounded-xl p-3 flex flex-col gap-3">
               <div className="rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-3">
@@ -781,6 +771,17 @@ export default function UsuarioPage() {
               )}
               {spaces.length === 0 && (
                 <p className="text-xs text-slate-400">Busca una direccion para ver zonas.</p>
+              )}
+            </div>
+
+            <div
+              ref={mapContainerRef}
+              className="h-[360px] lg:h-auto lg:min-h-[520px] rounded-xl border border-slate-800 bg-slate-950 order-first lg:order-last"
+            >
+              {mapsScriptError && (
+                <div className="h-full w-full flex items-center justify-center p-6 text-center text-sm text-rose-300">
+                  {mapsScriptError}
+                </div>
               )}
             </div>
           </div>

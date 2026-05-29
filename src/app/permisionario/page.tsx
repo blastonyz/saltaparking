@@ -64,6 +64,7 @@ export default function PermisionarioPage() {
   const [transferAlias, setTransferAlias] = useState("");
   const [transferCbu, setTransferCbu] = useState("");
   const [transferOwner, setTransferOwner] = useState("");
+  const [vehicleType, setVehicleType] = useState<"auto" | "moto">("auto");
   const [cashHours, setCashHours] = useState(1);
   const [cashZoneId, setCashZoneId] = useState("");
   const [cashAmount, setCashAmount] = useState(0);
@@ -234,7 +235,7 @@ export default function PermisionarioPage() {
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-slate-100">Solicitud de Pago en Efectivo</p>
                   <p className="mt-0.5 text-xs text-slate-400">
-                    {req.plate}{req.zoneId ? ` Â· Zona ${req.zoneId}` : ""}{req.amount ? ` Â· $${req.amount}` : ""}
+                    {req.plate}{req.zoneId ? ` · Zona ${req.zoneId}` : ""}{req.amount ? ` · $${req.amount}` : ""}
                   </p>
                 </div>
                 <button
@@ -247,9 +248,9 @@ export default function PermisionarioPage() {
               </section>
             ))}
 
-            {/* Vehicle registration */}
+            {/* Vehicle type */}
             <section className="glass-panel rounded-xl p-5 flex flex-col gap-4">
-              <h2 className="text-lg font-semibold text-slate-100">Registro de VehÃ­culo</h2>
+              <h2 className="text-lg font-semibold text-slate-100">Registro de Vehículo</h2>
               <div>
                 <label className="text-xs text-slate-400 mb-1.5 block uppercase tracking-wider">Patente</label>
                 <input
@@ -258,6 +259,24 @@ export default function PermisionarioPage() {
                   placeholder="ABC 123"
                   className="w-full h-16 rounded-xl border-2 border-slate-700 bg-slate-950 text-center text-3xl font-bold uppercase tracking-widest text-slate-100 focus:border-blue-500 focus:outline-none transition-colors"
                 />
+              </div>
+              {/* Vehicle selector */}
+              <div className="flex justify-evenly gap-3">
+                {(["auto", "moto"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setVehicleType(type)}
+                    className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-xl border-2 py-3 transition-all active:scale-95 ${
+                      vehicleType === type
+                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                        : "border-slate-700 bg-slate-800/40 text-slate-400 hover:border-slate-600"
+                    }`}
+                  >
+                    <span className="text-2xl">{type === "auto" ? "🚗" : "🏍️"}</span>
+                    <span className="text-xs font-semibold capitalize">{type === "auto" ? "Auto" : "Moto"}</span>
+                  </button>
+                ))}
               </div>
               <div className="flex flex-col gap-2">
                 <button
@@ -355,27 +374,27 @@ export default function PermisionarioPage() {
                   ))}
                 </select>
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    value={cashHours}
-                    onChange={(e) => {
-                      const hours = Math.max(1, Number(e.target.value) || 1);
-                      setCashHours(hours);
-                      const zone = zones.find((item) => (item.zoneId || "") === cashZoneId);
-                      if (zone) setCashAmount(Math.max(0, Number(zone.ratePerHour ?? 0)) * hours);
-                    }}
-                    placeholder="Horas"
-                    className="h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    value={cashAmount}
-                    onChange={(e) => setCashAmount(Math.max(0, Number(e.target.value) || 0))}
-                    placeholder="Monto ARS"
-                    className="h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
-                  />
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 uppercase tracking-wider">Cantidad de horas</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={cashHours}
+                      onChange={(e) => {
+                        const hours = Math.max(1, Number(e.target.value) || 1);
+                        setCashHours(hours);
+                        const zone = zones.find((item) => (item.zoneId || "") === cashZoneId);
+                        if (zone) setCashAmount(Math.max(0, Number(zone.ratePerHour ?? 0)) * hours);
+                      }}
+                      className="h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 uppercase tracking-wider">Monto total</span>
+                    <div className="h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-3 text-sm text-slate-100 flex items-center font-semibold">
+                      ${cashAmount}
+                    </div>
+                  </label>
                 </div>
               </div>
               <button
@@ -396,13 +415,13 @@ export default function PermisionarioPage() {
                 <input value={transferCbu} onChange={(e) => setTransferCbu(e.target.value)} placeholder="CBU/CVU" className="h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-100" />
                 <input value={transferOwner} onChange={(e) => setTransferOwner(e.target.value)} placeholder="Titular" className="h-9 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-slate-100" />
               </div>
-              {usedFallbackZones && <p className="text-xs text-orange-300">No habia zonas asignadas: se cargaron zonas sin asignar como fallback operativo.</p>}
+
               <ul className="flex flex-col gap-2">
                 {zones.map((zone) => (
                   <li key={zone.id} className="rounded-xl border border-slate-800 p-3">
                     <p className="text-sm font-medium text-slate-100">{zone.name}</p>
                     <p className="text-xs text-slate-400">{zone.address}</p>
-                    <p className="text-xs text-cyan-300 mt-0.5">Zona: {zone.zoneId || "-"} Â· ${zone.ratePerHour}/h</p>
+                    <p className="text-xs text-cyan-300 mt-0.5">Zona: {zone.zoneId || "-"} · ${zone.ratePerHour}/h</p>
                     <div className="mt-2 flex gap-2">
                       <button
                         type="button"
@@ -505,18 +524,20 @@ export default function PermisionarioPage() {
                   <div key={zone.id}>
                     <p className="text-sm font-medium text-slate-100">{zone.name}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{zone.address}</p>
-                    <p className="text-xs text-cyan-300 mt-0.5">${zone.ratePerHour}/h Â· Zona {zone.zoneId || "-"}</p>
+                    <p className="text-xs text-cyan-300 mt-0.5">${zone.ratePerHour}/h · Zona {zone.zoneId || "-"}</p>
                   </div>
                 ))}
               </section>
             )}
 
-            <Link
-              href="/"
-              className="w-full h-12 rounded-xl border border-slate-700 flex items-center justify-center text-sm text-slate-300 hover:bg-slate-800 transition"
-            >
-              Volver al inicio
-            </Link>
+            <div className="flex justify-center">
+              <Link
+                href="/"
+                className="h-11 px-6 rounded-xl border border-slate-700 inline-flex items-center justify-center text-sm text-slate-300 hover:bg-slate-800 transition active:scale-95"
+              >
+                Volver al inicio
+              </Link>
+            </div>
           </>
         )}
       </main>
