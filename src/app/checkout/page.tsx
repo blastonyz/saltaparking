@@ -40,10 +40,16 @@ export default function CheckoutPage() {
     const nextTitle = params.get("title");
     const nextRate = params.get("unitPrice");
     const nextZone = params.get("zoneId");
+    const nextDuration = params.get("durationMinutes");
+    const nextPlate = params.get("plate");
 
     if (nextTitle) setTitle(nextTitle);
     if (nextRate && Number.isFinite(Number(nextRate))) setUnitPrice(Number(nextRate));
     if (nextZone) setZoneId(nextZone);
+    if (nextDuration && Number.isFinite(Number(nextDuration))) {
+      setDurationMinutes(Math.max(1, Number(nextDuration)));
+    }
+    if (nextPlate) setPlate(nextPlate.toUpperCase());
   }, []);
 
   function clearWalletContainer() {

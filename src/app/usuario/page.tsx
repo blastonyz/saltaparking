@@ -6,7 +6,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
 
 type MapsMarker = { setMap: (map: unknown | null) => void };
-type MapsMap = { setCenter: (pos: { lat: number; lng: number }) => void; setZoom: (zoom: number) => void };
+type MapsMap = {
+  setCenter: (pos: { lat: number; lng: number }) => void;
+  setZoom: (zoom: number) => void;
+  getCenter: () => { lat: () => number; lng: () => number } | null;
+  setOptions: (options: {
+    draggableCursor?: string;
+    gestureHandling?: "greedy" | "cooperative" | "none" | "auto";
+  }) => void;
+};
 type MapsMouseEvent = { latLng?: { lat: () => number; lng: () => number } };
 type MapsPolygon = {
   setMap: (map: unknown | null) => void;
@@ -112,6 +120,7 @@ export default function UsuarioPage() {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [mapsScriptError, setMapsScriptError] = useState<string>("");
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
+  const [selectionLock, setSelectionLock] = useState(false);
 
   const mapRef = useRef<MapsMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -168,45 +177,7 @@ export default function UsuarioPage() {
       const clickLat = event.latLng?.lat();
       const clickLng = event.latLng?.lng();
       if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
-
-      const containing = spacesRef.current.find(
-        (item) => item.blockPolygon.length >= 3 && pointInPolygon(item.blockPolygon, clickLat as number, clickLng as number)
-      );
-
-      if (containing) {
-        setSelectedSpace(containing);
-        mapRef.current?.setCenter({ lat: containing.lat, lng: containing.lng });
-        mapRef.current?.setZoom(17);
-        setStatusMsg(`Cuadra seleccionada: ${containing.name}`);
-        return;
-      }
-
-      let nearest: Space | null = null;
-      let nearestDistance = Number.POSITIVE_INFINITY;
-
-      for (const item of spacesRef.current) {
-        const distance = haversineMeters(clickLat as number, clickLng as number, item.lat, item.lng);
-        if (distance < nearestDistance) {
-          nearest = item;
-          nearestDistance = distance;
-        }
-      }
-
-      if (!nearest) {
-        setStatusMsg("No hay cuadras cargadas para seleccionar en el mapa.");
-        return;
-      }
-
-      setSelectedSpace(nearest);
-      mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
-      mapRef.current?.setZoom(17);
-      if (nearestDistance > 1200) {
-        setStatusMsg(
-          `Seleccionada la cuadra mas cercana (${nearest.name}) a ${Math.round(nearestDistance)} m. Conviene recargar espacios en esa zona.`
-        );
-      } else {
-        setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
-      }
+      selectNearestFromPoint(clickLat as number, clickLng as number, "tap");
     });
 
     if (position) {
@@ -218,6 +189,14 @@ export default function UsuarioPage() {
     if (!mapRef.current || !position) return;
     mapRef.current.setCenter(position);
   }, [position]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setOptions({
+      gestureHandling: selectionLock ? "none" : "greedy",
+      draggableCursor: selectionLock ? "crosshair" : "grab",
+    });
+  }, [selectionLock]);
 
   useEffect(() => {
     window.gm_authFailure = () => {
@@ -265,7 +244,7 @@ export default function UsuarioPage() {
   }, [role]);
 
   async function fetchSpaces(lat: number, lng: number) {
-    const response = await fetch(`/api/parking/spaces?lat=${lat}&lng=${lng}&radius=2500`, {
+    const response = await fetch(`/api/parking/spaces?lat=${lat}&lng=${lng}&radius=7000`, {
       cache: "no-store",
     });
 
@@ -278,6 +257,52 @@ export default function UsuarioPage() {
     setSpaces(data.spaces);
     spacesRef.current = data.spaces;
     renderMarkers(data.spaces);
+
+    if (data.spaces.length === 0) {
+      setStatusMsg("No hay cuadras en el radio actual. Mueve el mapa y usa 'Seleccionar cuadra en centro'.");
+    }
+  }
+
+  function selectNearestFromPoint(lat: number, lng: number, source: "tap" | "center") {
+    const containing = spacesRef.current.find(
+      (item) => item.blockPolygon.length >= 3 && pointInPolygon(item.blockPolygon, lat, lng)
+    );
+
+    if (containing) {
+      setSelectedSpace(containing);
+      mapRef.current?.setCenter({ lat: containing.lat, lng: containing.lng });
+      mapRef.current?.setZoom(17);
+      setStatusMsg(`Cuadra seleccionada: ${containing.name}`);
+      return;
+    }
+
+    let nearest: Space | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const item of spacesRef.current) {
+      const distance = haversineMeters(lat, lng, item.lat, item.lng);
+      if (distance < nearestDistance) {
+        nearest = item;
+        nearestDistance = distance;
+      }
+    }
+
+    if (!nearest) {
+      setStatusMsg("No hay cuadras cargadas para seleccionar en el mapa.");
+      return;
+    }
+
+    setSelectedSpace(nearest);
+    mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
+    mapRef.current?.setZoom(17);
+
+    if (nearestDistance > 1200) {
+      setStatusMsg(
+        `Seleccionada la cuadra mas cercana (${nearest.name}) a ${Math.round(nearestDistance)} m (${source === "center" ? "centro del mapa" : "toque"}).`
+      );
+    } else {
+      setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
+    }
   }
 
   function renderMarkers(list: Space[]) {
@@ -464,6 +489,27 @@ export default function UsuarioPage() {
             className="inline-flex h-11 items-center rounded-lg border border-slate-700 px-4 text-sm"
           >
             Actualizar espacios
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const center = mapRef.current?.getCenter();
+              if (!center) {
+                setStatusMsg("Mapa no listo todavia.");
+                return;
+              }
+              selectNearestFromPoint(center.lat(), center.lng(), "center");
+            }}
+            className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-slate-950"
+          >
+            Seleccionar cuadra en centro
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectionLock((prev) => !prev)}
+            className="inline-flex h-11 items-center rounded-lg border border-amber-500/40 px-4 text-sm text-amber-300"
+          >
+            {selectionLock ? "Desbloquear mapa" : "Bloquear arrastre (modo seleccion)"}
           </button>
         </div>
 

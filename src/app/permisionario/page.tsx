@@ -25,6 +25,14 @@ type ZoneRow = {
   ratePerHour: number;
 };
 
+type CashPaymentResponse = {
+  ok: boolean;
+  plate: string;
+  amount: number;
+  durationMinutes: number;
+  expiresAt: string;
+};
+
 export default function PermisionarioPage() {
   const { sessionStatus, session } = useAuth();
   const [plate, setPlate] = useState("");
@@ -34,6 +42,10 @@ export default function PermisionarioPage() {
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [qrZoneId, setQrZoneId] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [cashHours, setCashHours] = useState(1);
+  const [cashZoneId, setCashZoneId] = useState("");
+  const [cashAmount, setCashAmount] = useState(0);
+  const [cashLoading, setCashLoading] = useState(false);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -46,6 +58,10 @@ export default function PermisionarioPage() {
       if (!response.ok) return;
       const data = (await response.json()) as { zones: ZoneRow[] };
       setZones(data.zones);
+      if (data.zones[0]) {
+        setCashZoneId(data.zones[0].zoneId || "");
+        setCashAmount(Math.max(0, Number(data.zones[0].ratePerHour ?? 0)));
+      }
     }
 
     void loadZones();
@@ -75,6 +91,45 @@ export default function PermisionarioPage() {
 
     setResult(data);
     setLoading(false);
+  }
+
+  async function registerCashPayment() {
+    const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
+    if (!normalizedPlate) {
+      setMessage("Ingresa una patente para registrar cobro en efectivo");
+      return;
+    }
+
+    const durationMinutes = Math.max(1, cashHours) * 60;
+    const amount = Math.max(0, Number(cashAmount));
+
+    setCashLoading(true);
+    const response = await fetch("/api/permisionario/cash-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plate: normalizedPlate,
+        zoneId: cashZoneId || null,
+        durationMinutes,
+        amount,
+      }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as
+      | CashPaymentResponse
+      | { error?: string };
+
+    if (!response.ok || ("ok" in data && !data.ok)) {
+      setMessage("error" in data && data.error ? data.error : "No se pudo registrar cobro en efectivo");
+      setCashLoading(false);
+      return;
+    }
+
+    setMessage(
+      `Cobro en efectivo registrado para ${normalizedPlate} por ${cashHours} h. Vigente hasta ${new Date((data as CashPaymentResponse).expiresAt).toLocaleString()}.`
+    );
+    setCashLoading(false);
+    await checkPlate();
   }
 
   if (sessionStatus === "loading") {
@@ -144,6 +199,67 @@ export default function PermisionarioPage() {
         )}
 
         <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+          <p className="text-sm font-medium text-slate-200">Cobro en efectivo</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Registra un pago manual por horas para habilitar la patente en el acto.
+          </p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <select
+              value={cashZoneId}
+              onChange={(e) => {
+                const nextZoneId = e.target.value;
+                setCashZoneId(nextZoneId);
+                const zone = zones.find((item) => (item.zoneId || "") === nextZoneId);
+                if (zone) {
+                  setCashAmount(Math.max(0, Number(zone.ratePerHour ?? 0)) * Math.max(1, cashHours));
+                }
+              }}
+              className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm"
+            >
+              <option value="">Zona sin especificar</option>
+              {zones.map((zone) => (
+                <option key={zone.id} value={zone.zoneId || ""}>
+                  {zone.name} ({zone.zoneId || "-"})
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="number"
+              min={1}
+              value={cashHours}
+              onChange={(e) => {
+                const hours = Math.max(1, Number(e.target.value) || 1);
+                setCashHours(hours);
+                const zone = zones.find((item) => (item.zoneId || "") === cashZoneId);
+                if (zone) {
+                  setCashAmount(Math.max(0, Number(zone.ratePerHour ?? 0)) * hours);
+                }
+              }}
+              className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm"
+            />
+
+            <input
+              type="number"
+              min={0}
+              value={cashAmount}
+              onChange={(e) => setCashAmount(Math.max(0, Number(e.target.value) || 0))}
+              className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={registerCashPayment}
+            disabled={cashLoading}
+            className="mt-3 inline-flex h-10 items-center rounded-lg bg-amber-400 px-3 text-sm font-semibold text-slate-950 disabled:opacity-70"
+          >
+            {cashLoading ? "Registrando..." : "Marcar cobrado en efectivo"}
+          </button>
+        </div>
+
+        <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
           <p className="text-sm font-medium text-slate-200">QR por zona</p>
           <p className="mt-1 text-xs text-slate-400">
             Genera un QR que abre checkout preconfigurado para una zona/cuadra.
@@ -161,7 +277,7 @@ export default function PermisionarioPage() {
                   type="button"
                   onClick={async () => {
                     const baseUrl = window.location.origin;
-                    const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}`;
+                    const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
                     const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
                     setQrZoneId(zone.id);
                     setQrDataUrl(qr);
@@ -169,6 +285,22 @@ export default function PermisionarioPage() {
                   className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
                 >
                   Generar QR
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const baseUrl = window.location.origin;
+                    const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
+                    try {
+                      await navigator.clipboard.writeText(checkoutUrl);
+                      setMessage("Link de cobro copiado");
+                    } catch {
+                      setMessage("No se pudo copiar link de cobro");
+                    }
+                  }}
+                  className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
+                >
+                  Copiar link
                 </button>
               </li>
             ))}
