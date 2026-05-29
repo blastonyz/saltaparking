@@ -41,7 +41,7 @@ export default function Home() {
         {/* Brand header */}
         <div className="flex w-full items-center justify-between gap-4 bg-white/75 px-6 py-4 rounded-t-2xl">
           <img src="/logo-salta.png" alt="Logo Salta" className="h-14 w-auto" />
-          <h1 className="text-xl font-semibold tracking-tight text-slate-800">Salta Parkin</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-800">Salta Parking</h1>
         </div>
 
         <div className="flex flex-col gap-4 p-6">
