@@ -8,6 +8,10 @@ type PreferenceResponse = {
   preferenceId: string;
   initPoint?: string;
   sandboxInitPoint?: string;
+  diagnostics?: {
+    accessTokenType?: "test" | "prod" | "missing";
+    publicKeyType?: "test" | "prod" | "missing";
+  };
 };
 
 type PaymentMode = "production" | "sandbox";
@@ -138,10 +142,16 @@ export default function CheckoutPage() {
       setLastSandboxPoint(sandboxPoint);
       setLastInitPoint(prodPoint);
       setLinksAreSame(Boolean(prodPoint && sandboxPoint && prodPoint === sandboxPoint));
+      const diag = data.diagnostics;
+      const diagText = diag
+        ? ` [server token: ${diag.accessTokenType || "?"}, public key: ${diag.publicKeyType || "?"}]`
+        : "";
+
       setStatusMsg(
         sandboxPoint
           ? "Preferencia creada. Usa Sandbox para pruebas; Produccion solo si tienes credenciales reales activas."
           : "Preferencia creada sin sandboxInitPoint."
+        + diagText
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {

@@ -60,7 +60,9 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
       <main className="glass-panel w-full max-w-2xl rounded-2xl p-8">
         <div className="flex items-center justify-between gap-3">
-          <img src="/logo-salta.png" alt="Logo Salta" className="h-10 w-auto" />
+          <div className="w-full rounded-xl border border-slate-200/50 bg-white/75 px-4 py-2">
+            <img src="/logo-salta.png" alt="Logo Salta" className="mx-auto h-10 w-auto" />
+          </div>
           {isAuthenticated && (
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-sm font-semibold text-slate-100">
               {(session?.user?.email?.[0] || "U").toUpperCase()}
@@ -69,34 +71,7 @@ export default function Home() {
         </div>
 
         <p className="mt-4 text-center text-xs uppercase tracking-[0.22em] text-emerald-300">ParkApp Salta</p>
-        <h1 className="mt-2 text-center text-4xl font-semibold tracking-tight">SEM Inteligente</h1>
-        <p className="mt-2 text-center text-sm text-slate-300">
-          Control simple de estacionamiento, pagos y deuda por patente.
-        </p>
-
-        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950/55 p-4">
-          <p className="text-sm text-slate-400">Estado de sesion</p>
-          <p className="mt-1 text-base font-medium text-slate-100">{sessionStatus}</p>
-          {sessionStatus === "loading" && (
-            <p className="mt-2 text-sm text-slate-400">Resolviendo sesion...</p>
-          )}
-          {isAuthenticated && (
-            <div className="mt-2 space-y-1 text-sm text-slate-300">
-              <p>
-                Sesion activa con: <span className="font-semibold">{session?.user?.email}</span>
-              </p>
-              <p>
-                Rol actual: <span className="font-semibold uppercase">{role || "sin-definir"}</span>
-              </p>
-              <p>
-                Estado permisionario:{" "}
-                <span className="font-semibold uppercase">
-                  {session?.user?.permisionarioStatus || "none"}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
+        <h1 className="mt-2 text-center text-4xl font-semibold tracking-tight">SEM Salta</h1>
 
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button

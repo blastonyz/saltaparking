@@ -130,6 +130,10 @@ export async function POST(req: Request) {
       preferenceId,
       initPoint: result.init_point,
       sandboxInitPoint: result.sandbox_init_point,
+      diagnostics: {
+        accessTokenType: inferCredentialType(process.env.MP_ACCESS_TOKEN),
+        publicKeyType: inferCredentialType(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY),
+      },
     });
   } catch (error) {
     const details = extractErrorDetails(error);
@@ -159,6 +163,14 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function inferCredentialType(value?: string): "test" | "prod" | "missing" {
+  if (!value) return "missing";
+  const trimmed = value.trim().toUpperCase();
+  if (trimmed.startsWith("TEST-")) return "test";
+  if (trimmed.startsWith("APP_USR-") || trimmed.startsWith("APP-")) return "prod";
+  return "prod";
 }
 
 function normalizePlate(value?: string): string {
