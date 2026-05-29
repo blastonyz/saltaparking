@@ -708,14 +708,7 @@ export default function UsuarioPage() {
                     </span>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={markVehicleAsParked}
-                    disabled={parkedLoading}
-                    className="inline-flex h-9 items-center rounded-md border border-amber-500/40 px-3 text-xs text-amber-300 disabled:opacity-60"
-                  >
-                    {parkedLoading ? "Registrando..." : "Vehiculo estacionado"}
-                  </button>
+
                 </div>
               )}
             </div>

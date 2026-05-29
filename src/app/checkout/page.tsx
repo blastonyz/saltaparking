@@ -246,7 +246,7 @@ export default function CheckoutPage() {
             </label>
 
             {!paymentDone && (
-              <div className="mt-6 mx-auto max-w-sm">
+              <div className="mt-6">
                 {!brickReady && (
                   <p className="py-8 text-center text-sm text-slate-400">Cargando formulario de pago...</p>
                 )}
