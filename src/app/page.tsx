@@ -4,69 +4,28 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
 
-type ProfileResponse = {
-  profile: {
-    userId: string;
-    email: string;
-    role: "admin" | "permisionario" | "usuario";
-    plate: string | null;
-    permisionarioStatus: "none" | "pending" | "approved";
-  };
-};
-
-type PendingUser = {
-  userId: string;
-  email: string;
-  plate: string | null;
-  permisionarioStatus: "pending";
-};
-
 export default function Home() {
   const { session, sessionStatus, loginWithGoogle, logout } = useAuth();
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
 
-  useEffect(() => {
-    if (sessionStatus === "loading") {
-      console.log("[front][session][loading]");
-      return;
-    }
-
-    console.log("[front][session]", {
-      sessionStatus,
-      email: session?.user?.email,
-      id: session?.user?.id,
-      role: session?.user?.role,
-      permisionarioStatus: session?.user?.permisionarioStatus,
-      plate: session?.user?.plate,
-    });
-  }, [
-    sessionStatus,
-    session?.user?.email,
-    session?.user?.id,
-    session?.user?.role,
-    session?.user?.permisionarioStatus,
-    session?.user?.plate,
-  ]);
-
   const [plateInput, setPlateInput] = useState(session?.user?.plate || "");
   const [message, setMessage] = useState("");
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  const [loadingPending, setLoadingPending] = useState(false);
   const [showSessionPopup, setShowSessionPopup] = useState(false);
 
   const canRequestPermisionario = useMemo(() => {
     return session?.user?.permisionarioStatus !== "approved";
   }, [session?.user?.permisionarioStatus]);
 
+  const dashboardHref = useMemo(() => {
+    if (role === "admin") return "/admin";
+    if (role === "permisionario") return "/permisionario";
+    return "/usuario";
+  }, [role]);
+
   useEffect(() => {
     setPlateInput(session?.user?.plate || "");
   }, [session?.user?.plate]);
-
-  useEffect(() => {
-    if (!isAuthenticated || role !== "admin") return;
-    void fetchPendingPermisionarios();
-  }, [isAuthenticated, role]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -97,31 +56,9 @@ export default function Home() {
     window.location.reload();
   }
 
-  async function fetchPendingPermisionarios() {
-    setLoadingPending(true);
-    const response = await fetch("/api/admin/permisionarios");
-    if (response.ok) {
-      const data = (await response.json()) as { pending: PendingUser[] };
-      setPendingUsers(data.pending);
-    }
-    setLoadingPending(false);
-  }
-
-  async function approvePermisionario(userId: string) {
-    const response = await fetch("/api/admin/permisionarios", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-
-    if (response.ok) {
-      await fetchPendingPermisionarios();
-    }
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-      <main className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl backdrop-blur">
+      <main className="glass-panel w-full max-w-2xl rounded-2xl p-8">
         <div className="flex items-center justify-between gap-3">
           <img src="/logo-salta.png" alt="Logo Salta" className="h-10 w-auto" />
           {isAuthenticated && (
@@ -131,10 +68,13 @@ export default function Home() {
           )}
         </div>
 
-        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-emerald-300">ParkApp Salta</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">SEM Inteligente Salta</h1>
+        <p className="mt-4 text-center text-xs uppercase tracking-[0.22em] text-emerald-300">ParkApp Salta</p>
+        <h1 className="mt-2 text-center text-4xl font-semibold tracking-tight">SEM Inteligente</h1>
+        <p className="mt-2 text-center text-sm text-slate-300">
+          Control simple de estacionamiento, pagos y deuda por patente.
+        </p>
 
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950/55 p-4">
           <p className="text-sm text-slate-400">Estado de sesion</p>
           <p className="mt-1 text-base font-medium text-slate-100">{sessionStatus}</p>
           {sessionStatus === "loading" && (
@@ -158,7 +98,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button
             type="button"
             onClick={() => loginWithGoogle()}
@@ -167,6 +107,15 @@ export default function Home() {
           >
             Ingresar con Google
           </button>
+
+          {isAuthenticated && (
+            <Link
+              href={dashboardHref}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 font-medium text-cyan-200 transition hover:bg-cyan-500/20"
+            >
+              Ir a mi panel
+            </Link>
+          )}
 
           <button
             type="button"
@@ -179,58 +128,8 @@ export default function Home() {
 
         </div>
 
-        <div className="mt-6 border-t border-slate-800 pt-5">
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/usuario"
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-cyan-500/40 px-4 font-medium text-cyan-300 transition hover:bg-cyan-500/10"
-            >
-              Mapa de usuario
-            </Link>
-
-            <Link
-              href="/checkout"
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-emerald-500/40 px-4 font-medium text-emerald-300 transition hover:bg-emerald-500/10"
-            >
-              Checkout
-            </Link>
-
-            {(session?.user?.role === "permisionario" || session?.user?.role === "admin") && (
-              <Link
-                href="/permisionario"
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-amber-500/40 px-4 font-medium text-amber-300 transition hover:bg-amber-500/10"
-              >
-                Verificacion por patente
-              </Link>
-            )}
-
-            {isAuthenticated && session?.user?.role === "admin" && (
-              <>
-                <Link
-                  href="/admin"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-amber-500/40 px-4 font-medium text-amber-300 transition hover:bg-amber-500/10"
-                >
-                  Panel admin
-                </Link>
-                <Link
-                  href="/admin/permisionarios"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-200 transition hover:bg-slate-800"
-                >
-                  Permisionarios
-                </Link>
-                <Link
-                  href="/admin/usuarios"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-200 transition hover:bg-slate-800"
-                >
-                  Usuarios
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-
         {isAuthenticated && session?.user?.role !== "permisionario" && (
-          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-3">
+          <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950/55 p-4 space-y-3">
             <p className="text-sm font-medium text-slate-200">Perfil del conductor</p>
             <label className="flex flex-col gap-1 text-sm text-slate-300">
               Patente
@@ -263,46 +162,6 @@ export default function Home() {
             </div>
 
             {!!message && <p className="text-xs text-emerald-300">{message}</p>}
-          </div>
-        )}
-
-        {isAuthenticated && session?.user?.role === "admin" && (
-          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-slate-200">Aprobacion de permisionarios</p>
-              <button
-                type="button"
-                onClick={fetchPendingPermisionarios}
-                className="text-xs text-slate-300 underline"
-              >
-                Actualizar
-              </button>
-            </div>
-
-            {loadingPending && <p className="text-sm text-slate-400">Cargando solicitudes...</p>}
-
-            {!loadingPending && pendingUsers.length === 0 && (
-              <p className="text-sm text-slate-400">No hay solicitudes pendientes.</p>
-            )}
-
-            <ul className="space-y-2">
-              {pendingUsers.map((item) => (
-                <li
-                  key={item.userId}
-                  className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm"
-                >
-                  <p className="text-slate-200">{item.email}</p>
-                  <p className="text-xs text-slate-400">Patente: {item.plate || "sin cargar"}</p>
-                  <button
-                    type="button"
-                    onClick={() => approvePermisionario(item.userId)}
-                    className="mt-2 inline-flex h-8 items-center rounded-md bg-emerald-500 px-2 text-xs font-medium text-slate-950"
-                  >
-                    Aprobar
-                  </button>
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 
