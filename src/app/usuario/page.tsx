@@ -127,6 +127,7 @@ export default function UsuarioPage() {
   const markersRef = useRef<MapsMarker[]>([]);
   const polygonsRef = useRef<Array<{ polygon: MapsPolygon; spaceId: string }>>([]);
   const spacesRef = useRef<Space[]>([]);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -180,6 +181,13 @@ export default function UsuarioPage() {
       selectNearestFromPoint(clickLat as number, clickLng as number, "tap");
     });
 
+    window.google.maps.event.addListener(mapRef.current, "idle", () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        void syncFromMapCenterOnIdle();
+      }, 250);
+    });
+
     if (position) {
       void fetchSpaces(position.lat, position.lng);
     }
@@ -189,6 +197,12 @@ export default function UsuarioPage() {
     if (!mapRef.current || !position) return;
     mapRef.current.setCenter(position);
   }, [position]);
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -266,15 +280,17 @@ export default function UsuarioPage() {
     }
   }
 
-  function selectNearestFromPoint(lat: number, lng: number, source: "tap" | "center") {
+  function selectNearestFromPoint(lat: number, lng: number, source: "tap" | "center" | "idle") {
     const containing = spacesRef.current.find(
       (item) => item.blockPolygon.length >= 3 && pointInPolygon(item.blockPolygon, lat, lng)
     );
 
     if (containing) {
       setSelectedSpace(containing);
-      mapRef.current?.setCenter({ lat: containing.lat, lng: containing.lng });
-      mapRef.current?.setZoom(17);
+      if (source !== "idle") {
+        mapRef.current?.setCenter({ lat: containing.lat, lng: containing.lng });
+        mapRef.current?.setZoom(17);
+      }
       setStatusMsg(`Cuadra seleccionada: ${containing.name}`);
       return;
     }
@@ -296,8 +312,10 @@ export default function UsuarioPage() {
     }
 
     setSelectedSpace(nearest);
-    mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
-    mapRef.current?.setZoom(17);
+    if (source !== "idle") {
+      mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
+      mapRef.current?.setZoom(17);
+    }
 
     if (nearestDistance > 1200) {
       setStatusMsg(
@@ -327,6 +345,17 @@ export default function UsuarioPage() {
     }
 
     selectNearestFromPoint(lat, lng, "center");
+  }
+
+  async function syncFromMapCenterOnIdle() {
+    const center = mapRef.current?.getCenter();
+    if (!center) return;
+
+    const lat = center.lat();
+    const lng = center.lng();
+
+    await fetchSpaces(lat, lng);
+    selectNearestFromPoint(lat, lng, "idle");
   }
 
   function renderMarkers(list: Space[]) {

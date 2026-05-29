@@ -47,10 +47,14 @@ export default function PermisionarioPage() {
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [qrZoneId, setQrZoneId] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [lastGeneratedLink, setLastGeneratedLink] = useState("");
   const [usedFallbackZones, setUsedFallbackZones] = useState(false);
   const [manualZoneName, setManualZoneName] = useState("Cobro rapido");
   const [manualZoneId, setManualZoneId] = useState("MANUAL");
   const [manualRatePerHour, setManualRatePerHour] = useState(1000);
+  const [transferAlias, setTransferAlias] = useState("");
+  const [transferCbu, setTransferCbu] = useState("");
+  const [transferOwner, setTransferOwner] = useState("");
   const [cashHours, setCashHours] = useState(1);
   const [cashZoneId, setCashZoneId] = useState("");
   const [cashAmount, setCashAmount] = useState(0);
@@ -274,6 +278,26 @@ export default function PermisionarioPage() {
           <p className="mt-1 text-xs text-slate-400">
             Genera un QR que abre checkout preconfigurado para una zona/cuadra.
           </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <input
+              value={transferAlias}
+              onChange={(e) => setTransferAlias(e.target.value)}
+              placeholder="Alias destino"
+              className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-xs"
+            />
+            <input
+              value={transferCbu}
+              onChange={(e) => setTransferCbu(e.target.value)}
+              placeholder="CBU/CVU destino"
+              className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-xs"
+            />
+            <input
+              value={transferOwner}
+              onChange={(e) => setTransferOwner(e.target.value)}
+              placeholder="Titular"
+              className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-xs"
+            />
+          </div>
           {usedFallbackZones && (
             <p className="mt-2 text-xs text-amber-300">
               No habia zonas asignadas: se cargaron zonas sin asignar como fallback operativo.
@@ -296,10 +320,25 @@ export default function PermisionarioPage() {
                     const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
                     setQrZoneId(zone.id);
                     setQrDataUrl(qr);
+                    setLastGeneratedLink(checkoutUrl);
                   }}
                   className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
                 >
-                  Generar QR
+                  QR pasarela
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const baseUrl = window.location.origin;
+                    const transferUrl = `${baseUrl}/transfer?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}&alias=${encodeURIComponent(transferAlias)}&cbu=${encodeURIComponent(transferCbu)}&owner=${encodeURIComponent(transferOwner)}`;
+                    const qr = await QRCode.toDataURL(transferUrl, { width: 260, margin: 1 });
+                    setQrZoneId(`${zone.id}-transfer`);
+                    setQrDataUrl(qr);
+                    setLastGeneratedLink(transferUrl);
+                  }}
+                  className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-cyan-500/40 px-2 text-xs text-cyan-300"
+                >
+                  QR transferencia directa
                 </button>
                 <button
                   type="button"
@@ -353,14 +392,15 @@ export default function PermisionarioPage() {
                 type="button"
                 onClick={async () => {
                   const baseUrl = window.location.origin;
-                  const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(manualZoneName || "Cobro rapido")}&unitPrice=${manualRatePerHour}&zoneId=${encodeURIComponent(manualZoneId || "MANUAL")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
-                  const qr = await QRCode.toDataURL(checkoutUrl, { width: 260, margin: 1 });
+                    const transferUrl = `${baseUrl}/transfer?title=${encodeURIComponent(manualZoneName || "Cobro rapido")}&unitPrice=${manualRatePerHour}&zoneId=${encodeURIComponent(manualZoneId || "MANUAL")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}&alias=${encodeURIComponent(transferAlias)}&cbu=${encodeURIComponent(transferCbu)}&owner=${encodeURIComponent(transferOwner)}`;
+                  const qr = await QRCode.toDataURL(transferUrl, { width: 260, margin: 1 });
                   setQrZoneId("manual");
                   setQrDataUrl(qr);
+                  setLastGeneratedLink(transferUrl);
                 }}
                 className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
               >
-                Generar QR manual
+                Generar QR manual (transferencia)
               </button>
             </div>
           )}
@@ -369,6 +409,9 @@ export default function PermisionarioPage() {
             <div className="mt-4 rounded-md border border-slate-800 p-3">
               <p className="text-xs text-slate-300">QR generado {qrZoneId ? `(zona ${qrZoneId})` : ""}</p>
               <img src={qrDataUrl} alt="QR de zona" className="mt-2 h-[220px] w-[220px] rounded-md bg-white p-2" />
+              {lastGeneratedLink && (
+                <p className="mt-2 break-all text-[11px] text-slate-400">{lastGeneratedLink}</p>
+              )}
               <a
                 href={qrDataUrl}
                 download="zona-qr.png"
