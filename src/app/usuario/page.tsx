@@ -114,6 +114,7 @@ export default function UsuarioPage() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<MapsMarker[]>([]);
   const polygonsRef = useRef<Array<{ polygon: MapsPolygon; spaceId: string }>>([]);
+  const spacesRef = useRef<Space[]>([]);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -218,6 +219,7 @@ export default function UsuarioPage() {
 
     const data = (await response.json()) as { spaces: Space[]; total: number };
     setSpaces(data.spaces);
+    spacesRef.current = data.spaces;
     renderMarkers(data.spaces);
   }
 
@@ -341,6 +343,37 @@ export default function UsuarioPage() {
     setStatusMsg(`Direccion encontrada: ${data.formattedAddress}`);
     await fetchSpaces(lat, lng);
   }
+
+  useEffect(() => {
+    if (!mapRef.current || !window.google) return;
+
+    window.google.maps.event.addListener(mapRef.current, "click", (event: MapsMouseEvent) => {
+      const clickLat = event.latLng?.lat();
+      const clickLng = event.latLng?.lng();
+      if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
+
+      let nearest: Space | null = null;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      for (const item of spacesRef.current) {
+        const distance = haversineMeters(clickLat as number, clickLng as number, item.lat, item.lng);
+        if (distance < nearestDistance) {
+          nearest = item;
+          nearestDistance = distance;
+        }
+      }
+
+      if (!nearest || nearestDistance > 180) {
+        setStatusMsg("No se encontro una cuadra cercana. Acercate mas o usa la lista lateral.");
+        return;
+      }
+
+      setSelectedSpace(nearest);
+      mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
+      mapRef.current?.setZoom(17);
+      setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
+    });
+  }, [mapReady]);
 
   if (sessionStatus === "loading") {
     return <PageShell>Resolviendo sesion...</PageShell>;
@@ -507,4 +540,19 @@ function PageShell({ children }: { children: string }) {
       </main>
     </div>
   );
+}
+
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
