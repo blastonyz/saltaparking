@@ -4,6 +4,7 @@ import { authOptions } from "@/auth";
 import { getMongoCollection } from "@/lib/mongodb";
 
 type ParkingSpaceDoc = {
+  _id?: unknown;
   name?: string;
   address?: string;
   lat?: number;
@@ -12,9 +13,11 @@ type ParkingSpaceDoc = {
   totalSpots?: number;
   ratePerHour?: number;
   zoneId?: string;
+  blockPolygon?: Array<{ lat?: number; lng?: number }>;
 };
 
 type SpaceResponse = {
+  id: string;
   name: string;
   address: string;
   lat: number;
@@ -23,6 +26,7 @@ type SpaceResponse = {
   totalSpots: number;
   ratePerHour: number;
   zoneId: string | null;
+  blockPolygon: Array<{ lat: number; lng: number }>;
   distanceMeters: number | null;
 };
 
@@ -53,7 +57,14 @@ export async function GET(req: Request) {
         ? haversineMeters(lat, lng, Number(item.lat), Number(item.lng))
         : null;
 
+      const blockPolygon = Array.isArray(item.blockPolygon)
+        ? item.blockPolygon
+            .map((point) => ({ lat: Number(point.lat), lng: Number(point.lng) }))
+            .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+        : [];
+
       return {
+        id: String(item._id ?? `${item.zoneId || item.name || "space"}`),
         name: item.name || "Espacio sin nombre",
         address: item.address || "Sin direccion",
         lat: Number(item.lat),
@@ -62,6 +73,7 @@ export async function GET(req: Request) {
         totalSpots: Number(item.totalSpots ?? 0),
         ratePerHour: Number(item.ratePerHour ?? 0),
         zoneId: item.zoneId || null,
+        blockPolygon,
         distanceMeters,
       };
     })

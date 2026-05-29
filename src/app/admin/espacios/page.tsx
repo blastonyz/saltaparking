@@ -15,6 +15,7 @@ type SpaceRow = {
   ratePerHour: number;
   zoneId: string | null;
   assignedPermisionarioEmail?: string | null;
+  blockPolygon?: Array<{ lat: number; lng: number }>;
   updatedAt: string;
 };
 
@@ -34,6 +35,26 @@ export default function AdminEspaciosPage() {
   const [totalSpots, setTotalSpots] = useState("0");
   const [ratePerHour, setRatePerHour] = useState("0");
   const [assignedPermisionarioEmail, setAssignedPermisionarioEmail] = useState("");
+  const [blockPolygonText, setBlockPolygonText] = useState("");
+
+  function parseBlockPolygon(text: string): Array<{ lat: number; lng: number }> {
+    const normalized = text.trim();
+    if (!normalized) return [];
+
+    const parts = normalized
+      .split(";")
+      .map((chunk) => chunk.trim())
+      .filter(Boolean);
+
+    const points = parts
+      .map((chunk) => {
+        const [latRaw, lngRaw] = chunk.split(",").map((value) => value.trim());
+        return { lat: Number(latRaw), lng: Number(lngRaw) };
+      })
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+
+    return points;
+  }
 
   useEffect(() => {
     if (sessionStatus === "authenticated" && session?.user?.role === "admin") {
@@ -56,6 +77,12 @@ export default function AdminEspaciosPage() {
 
   async function createSpace() {
     setMessage("");
+    const blockPolygon = parseBlockPolygon(blockPolygonText);
+    if (blockPolygonText.trim() && blockPolygon.length < 3) {
+      setMessage("Poligono invalido: usa formato lat,lng; lat,lng; lat,lng");
+      return;
+    }
+
     const response = await fetch("/api/admin/spaces", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -70,6 +97,7 @@ export default function AdminEspaciosPage() {
         totalSpots: Number(totalSpots),
         ratePerHour: Number(ratePerHour),
         assignedPermisionarioEmail,
+        blockPolygon,
       }),
     });
 
@@ -89,6 +117,7 @@ export default function AdminEspaciosPage() {
     setTotalSpots("0");
     setRatePerHour("0");
     setAssignedPermisionarioEmail("");
+    setBlockPolygonText("");
     await fetchSpaces();
   }
 
@@ -181,6 +210,12 @@ export default function AdminEspaciosPage() {
             <input value={ratePerHour} onChange={(e) => setRatePerHour(e.target.value)} placeholder="Tarifa/h" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
             <input value={assignedPermisionarioEmail} onChange={(e) => setAssignedPermisionarioEmail(e.target.value)} placeholder="Email permisionario (opcional)" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
           </div>
+          <textarea
+            value={blockPolygonText}
+            onChange={(e) => setBlockPolygonText(e.target.value)}
+            placeholder="Poligono opcional: lat,lng; lat,lng; lat,lng"
+            className="mt-3 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs"
+          />
           <button
             type="button"
             onClick={createSpace}

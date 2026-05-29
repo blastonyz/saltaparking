@@ -7,6 +7,12 @@ import { useAuth } from "@/app/context/auth-context";
 
 type MapsMarker = { setMap: (map: unknown | null) => void };
 type MapsMap = { setCenter: (pos: { lat: number; lng: number }) => void; setZoom: (zoom: number) => void };
+type MapsMouseEvent = { latLng?: { lat: () => number; lng: () => number } };
+type MapsPolygon = {
+  setMap: (map: unknown | null) => void;
+  setOptions: (options: { fillColor?: string; fillOpacity?: number; strokeColor?: string }) => void;
+  addListener: (eventName: string, handler: () => void) => void;
+};
 
 type GoogleMapsApi = {
   maps: {
@@ -23,7 +29,24 @@ type GoogleMapsApi = {
       map: MapsMap;
       position: { lat: number; lng: number };
       title: string;
-    }) => MapsMarker;
+    }) => MapsMarker & { addListener: (eventName: string, handler: () => void) => void };
+    event: {
+      addListener: (
+        target: MapsMap,
+        eventName: string,
+        handler: (event: MapsMouseEvent) => void
+      ) => void;
+    };
+    Polygon: new (params: {
+      map: MapsMap;
+      paths: Array<{ lat: number; lng: number }>;
+      strokeColor: string;
+      strokeOpacity: number;
+      strokeWeight: number;
+      fillColor: string;
+      fillOpacity: number;
+      clickable: boolean;
+    }) => MapsPolygon;
     Geocoder: new () => {
       geocode: (
         request: { address: string },
@@ -51,6 +74,7 @@ declare global {
 }
 
 type Space = {
+  id: string;
   name: string;
   address: string;
   lat: number;
@@ -59,6 +83,7 @@ type Space = {
   totalSpots: number;
   ratePerHour: number;
   zoneId: string | null;
+  blockPolygon: Array<{ lat: number; lng: number }>;
   distanceMeters: number | null;
 };
 
@@ -83,10 +108,12 @@ export default function UsuarioPage() {
   const [addressQuery, setAddressQuery] = useState("");
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [mapsScriptError, setMapsScriptError] = useState<string>("");
+  const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
 
   const mapRef = useRef<MapsMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersRef = useRef<MapsMarker[]>([]);
+  const polygonsRef = useRef<Array<{ polygon: MapsPolygon; spaceId: string }>>([]);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -198,17 +225,60 @@ export default function UsuarioPage() {
     if (!window.google || !mapRef.current) return;
 
     markersRef.current.forEach((marker) => marker.setMap(null));
+    polygonsRef.current.forEach((item) => item.polygon.setMap(null));
     markersRef.current = [];
+    polygonsRef.current = [];
 
     for (const item of list) {
+      if (item.blockPolygon.length >= 3) {
+        const polygon = new window.google.maps.Polygon({
+          map: mapRef.current,
+          paths: item.blockPolygon,
+          strokeColor: "#06b6d4",
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: "#0891b2",
+          fillOpacity: 0.25,
+          clickable: true,
+        });
+
+        polygon.addListener("click", () => {
+          setSelectedSpace(item);
+          mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
+          mapRef.current?.setZoom(17);
+          setStatusMsg(`Cuadra seleccionada: ${item.name}`);
+        });
+
+        polygonsRef.current.push({ polygon, spaceId: item.id });
+      }
+
       const marker = new window.google.maps.Marker({
         map: mapRef.current,
         position: { lat: item.lat, lng: item.lng },
         title: `${item.name} (${item.availableSpots}/${item.totalSpots})`,
       });
+
+      marker.addListener("click", () => {
+        setSelectedSpace(item);
+        mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
+        mapRef.current?.setZoom(17);
+        setStatusMsg(`Cuadra seleccionada: ${item.name}`);
+      });
+
       markersRef.current.push(marker);
     }
   }
+
+  useEffect(() => {
+    polygonsRef.current.forEach(({ polygon, spaceId }) => {
+      const isSelected = selectedSpace?.id === spaceId;
+      polygon.setOptions({
+        fillColor: isSelected ? "#34d399" : "#0891b2",
+        fillOpacity: isSelected ? 0.45 : 0.25,
+        strokeColor: isSelected ? "#10b981" : "#06b6d4",
+      });
+    });
+  }, [selectedSpace]);
 
   async function searchAddress() {
     if (!addressQuery.trim()) {
@@ -358,10 +428,32 @@ export default function UsuarioPage() {
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+            <div className="mb-3 rounded-md border border-emerald-900/60 bg-emerald-950/20 p-2">
+              <p className="text-xs text-emerald-300">Seleccion actual</p>
+              <p className="text-sm text-slate-100">
+                {selectedSpace ? selectedSpace.name : "Haz click en un marcador para elegir cuadra"}
+              </p>
+              {selectedSpace && (
+                <Link
+                  href={`/checkout?title=${encodeURIComponent(selectedSpace.name)}&unitPrice=${selectedSpace.ratePerHour}&zoneId=${encodeURIComponent(selectedSpace.zoneId || "")}`}
+                  className="mt-2 inline-flex h-9 items-center rounded-md bg-emerald-400 px-3 text-xs font-semibold text-slate-950"
+                >
+                  Pagar cuadra seleccionada
+                </Link>
+              )}
+            </div>
+
             <p className="text-sm font-medium text-slate-200">Espacios disponibles ({spaces.length})</p>
             <ul className="mt-3 space-y-2 text-sm">
               {spaces.map((item, idx) => (
-                <li key={`${item.zoneId || item.name}-${idx}`} className="rounded-md border border-slate-800 p-2">
+                <li
+                  key={item.id || `${item.zoneId || item.name}-${idx}`}
+                  className={`rounded-md border p-2 ${
+                    selectedSpace?.id === item.id
+                      ? "border-emerald-500/70 bg-emerald-950/20"
+                      : "border-slate-800"
+                  }`}
+                >
                   <p className="text-slate-100">{item.name}</p>
                   <p className="text-xs text-slate-400">{item.address}</p>
                   <p className="mt-1 text-xs text-cyan-300">
@@ -370,6 +462,18 @@ export default function UsuarioPage() {
                   {item.distanceMeters != null && (
                     <p className="text-xs text-slate-400">Distancia: {Math.round(item.distanceMeters)} m</p>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSpace(item);
+                      mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
+                      mapRef.current?.setZoom(17);
+                      setStatusMsg(`Cuadra seleccionada: ${item.name}`);
+                    }}
+                    className="mt-2 mr-2 inline-flex h-8 items-center rounded-md border border-cyan-500/40 px-2 text-xs text-cyan-300"
+                  >
+                    Seleccionar en mapa
+                  </button>
                   <Link
                     href={`/checkout?title=${encodeURIComponent(item.name)}&unitPrice=${item.ratePerHour}&zoneId=${encodeURIComponent(item.zoneId || "")}`}
                     className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"

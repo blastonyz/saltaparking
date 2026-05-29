@@ -13,6 +13,7 @@ type ParkingSpaceDoc = {
   ratePerHour: number;
   zoneId: string | null;
   assignedPermisionarioEmail?: string | null;
+  blockPolygon?: Array<{ lat: number; lng: number }>;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -28,7 +29,19 @@ type CreateSpaceBody = {
   ratePerHour?: number;
   zoneId?: string;
   assignedPermisionarioEmail?: string;
+  blockPolygon?: Array<{ lat: number; lng: number }>;
 };
+
+function makeSeedBlockPolygon(lat: number, lng: number): Array<{ lat: number; lng: number }> {
+  const deltaLat = 0.0003;
+  const deltaLng = 0.00045;
+  return [
+    { lat: lat - deltaLat, lng: lng - deltaLng },
+    { lat: lat - deltaLat, lng: lng + deltaLng },
+    { lat: lat + deltaLat, lng: lng + deltaLng },
+    { lat: lat + deltaLat, lng: lng - deltaLng },
+  ];
+}
 
 const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
   {
@@ -41,6 +54,7 @@ const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
     ratePerHour: 900,
     zoneId: "BAL-500",
     assignedPermisionarioEmail: null,
+    blockPolygon: makeSeedBlockPolygon(-24.78145, -65.41238),
   },
   {
     name: "Mitre 300",
@@ -52,6 +66,7 @@ const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
     ratePerHour: 850,
     zoneId: "MIT-300",
     assignedPermisionarioEmail: null,
+    blockPolygon: makeSeedBlockPolygon(-24.78902, -65.41002),
   },
   {
     name: "Caseros 700",
@@ -63,6 +78,7 @@ const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
     ratePerHour: 800,
     zoneId: "CAS-700",
     assignedPermisionarioEmail: null,
+    blockPolygon: makeSeedBlockPolygon(-24.7934, -65.40577),
   },
 ];
 
@@ -125,6 +141,11 @@ export async function POST(req: Request) {
   const address = body.address?.trim();
   const zoneId = body.zoneId?.trim() || null;
   const assignedPermisionarioEmail = body.assignedPermisionarioEmail?.trim().toLowerCase() || null;
+  const blockPolygon = Array.isArray(body.blockPolygon)
+    ? body.blockPolygon
+        .map((point) => ({ lat: Number(point.lat), lng: Number(point.lng) }))
+        .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+    : [];
   const lat = Number(body.lat);
   const lng = Number(body.lng);
   const availableSpots = Number(body.availableSpots ?? 0);
@@ -147,6 +168,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "tarifa invalida" }, { status: 400 });
   }
 
+  if (blockPolygon.length > 0 && blockPolygon.length < 3) {
+    return NextResponse.json(
+      { error: "blockPolygon invalido: requiere al menos 3 puntos" },
+      { status: 400 }
+    );
+  }
+
   const now = new Date();
   await collection.insertOne({
     name,
@@ -158,6 +186,7 @@ export async function POST(req: Request) {
     ratePerHour,
     zoneId,
     assignedPermisionarioEmail,
+    blockPolygon: blockPolygon.length ? blockPolygon : undefined,
     createdAt: now,
     updatedAt: now,
   });
