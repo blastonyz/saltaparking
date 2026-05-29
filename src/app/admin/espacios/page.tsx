@@ -1,8 +1,58 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
+
+type MapsMap = {
+  setCenter: (pos: { lat: number; lng: number }) => void;
+  setZoom: (zoom: number) => void;
+};
+
+type MapsMarker = {
+  setMap: (map: unknown | null) => void;
+  setPosition?: (pos: { lat: number; lng: number }) => void;
+};
+
+type MapsMouseEvent = {
+  latLng?: {
+    lat: () => number;
+    lng: () => number;
+  };
+};
+
+type GoogleMapsApi = {
+  maps: {
+    Map: new (
+      element: HTMLElement,
+      options: {
+        center: { lat: number; lng: number };
+        zoom: number;
+        mapTypeControl: boolean;
+        streetViewControl: boolean;
+        clickableIcons?: boolean;
+      }
+    ) => MapsMap;
+    Marker: new (params: {
+      map: MapsMap;
+      position: { lat: number; lng: number };
+      title: string;
+    }) => MapsMarker;
+    event: {
+      addListener: (
+        target: MapsMap,
+        eventName: string,
+        handler: (event: MapsMouseEvent) => void
+      ) => void;
+    };
+  };
+};
+
+type MapsConfig = {
+  apiKey: string;
+  hasKey: boolean;
+};
 
 type SpaceRow = {
   _id: string;
@@ -36,6 +86,18 @@ export default function AdminEspaciosPage() {
   const [ratePerHour, setRatePerHour] = useState("0");
   const [assignedPermisionarioEmail, setAssignedPermisionarioEmail] = useState("");
   const [blockPolygonText, setBlockPolygonText] = useState("");
+  const [segmentFrom, setSegmentFrom] = useState("");
+  const [segmentTo, setSegmentTo] = useState("");
+  const [segmentWidthMeters, setSegmentWidthMeters] = useState("12");
+  const [mapsKey, setMapsKey] = useState("");
+  const [mapReady, setMapReady] = useState(false);
+  const [mapsError, setMapsError] = useState("");
+  const [captureTarget, setCaptureTarget] = useState<"from" | "to">("from");
+  const [fromMarker, setFromMarker] = useState<MapsMarker | null>(null);
+  const [toMarker, setToMarker] = useState<MapsMarker | null>(null);
+
+  const mapContainerId = "admin-spaces-map";
+  const [mapInstance, setMapInstance] = useState<MapsMap | null>(null);
 
   function parseBlockPolygon(text: string): Array<{ lat: number; lng: number }> {
     const normalized = text.trim();
@@ -56,11 +118,185 @@ export default function AdminEspaciosPage() {
     return points;
   }
 
+  function parseLatLng(text: string): { lat: number; lng: number } | null {
+    const raw = text.trim();
+    if (!raw) return null;
+
+    // Supports plain "lat,lng" and common Google Maps URL fragments like "@lat,lng".
+    const match = raw.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (!match) return null;
+
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }
+
+  function metersToLat(meters: number): number {
+    return meters / 111320;
+  }
+
+  function metersToLng(meters: number, atLat: number): number {
+    const safeCos = Math.max(0.2, Math.cos((atLat * Math.PI) / 180));
+    return meters / (111320 * safeCos);
+  }
+
+  function buildSegmentPolygon(
+    from: { lat: number; lng: number },
+    to: { lat: number; lng: number },
+    widthMeters: number
+  ): Array<{ lat: number; lng: number }> {
+    const dx = to.lng - from.lng;
+    const dy = to.lat - from.lat;
+    const len = Math.sqrt(dx * dx + dy * dy);
+
+    if (!Number.isFinite(len) || len === 0) {
+      return [];
+    }
+
+    // Unit perpendicular vector in lat/lng space.
+    const nx = -dy / len;
+    const ny = dx / len;
+    const half = Math.max(2, widthMeters) / 2;
+
+    const midLat = (from.lat + to.lat) / 2;
+    const latOffset = metersToLat(half);
+    const lngOffset = metersToLng(half, midLat);
+
+    const dLat = ny * latOffset;
+    const dLng = nx * lngOffset;
+
+    return [
+      { lat: from.lat + dLat, lng: from.lng + dLng },
+      { lat: to.lat + dLat, lng: to.lng + dLng },
+      { lat: to.lat - dLat, lng: to.lng - dLng },
+      { lat: from.lat - dLat, lng: from.lng - dLng },
+    ];
+  }
+
+  function applySegmentGenerator() {
+    const from = parseLatLng(segmentFrom);
+    const to = parseLatLng(segmentTo);
+    const width = Number(segmentWidthMeters);
+
+    if (!from || !to) {
+      setMessage("Tramo invalido: usa 'lat,lng' en Desde y Hasta (tambien sirve pegar URL de Maps)");
+      return;
+    }
+
+    if (!Number.isFinite(width) || width <= 0) {
+      setMessage("Ancho invalido (metros)");
+      return;
+    }
+
+    const polygon = buildSegmentPolygon(from, to, width);
+    if (polygon.length < 3) {
+      setMessage("No se pudo generar poligono del tramo");
+      return;
+    }
+
+    const centerLat = (from.lat + to.lat) / 2;
+    const centerLng = (from.lng + to.lng) / 2;
+    setLat(centerLat.toFixed(6));
+    setLng(centerLng.toFixed(6));
+    setBlockPolygonText(
+      polygon.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join("; ")
+    );
+    setMessage("Tramo aplicado: centro y poligono autocompletados");
+  }
+
+  function formatLatLngPoint(point: { lat: number; lng: number }): string {
+    return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
+  }
+
   useEffect(() => {
     if (sessionStatus === "authenticated" && session?.user?.role === "admin") {
       void fetchSpaces();
     }
   }, [sessionStatus, session?.user?.role]);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || session?.user?.role !== "admin") return;
+
+    async function loadMapsConfig() {
+      const response = await fetch("/api/maps/config", { cache: "no-store" });
+      if (!response.ok) {
+        setMapsError("No se pudo cargar config de mapa");
+        return;
+      }
+
+      const data = (await response.json()) as MapsConfig;
+      if (!data.hasKey || !data.apiKey) {
+        setMapsError("Falta MAPS_AK para usar captura en mapa");
+        return;
+      }
+
+      setMapsKey(data.apiKey);
+    }
+
+    void loadMapsConfig();
+  }, [sessionStatus, session?.user?.role]);
+
+  useEffect(() => {
+    const googleApi = (window as Window & { google?: GoogleMapsApi }).google;
+    if (!mapReady || !googleApi || mapInstance) return;
+
+    const container = document.getElementById(mapContainerId);
+    if (!container) return;
+
+    const map = new googleApi.maps.Map(container, {
+      center: { lat: -24.7829, lng: -65.4232 },
+      zoom: 15,
+      mapTypeControl: false,
+      streetViewControl: false,
+      clickableIcons: false,
+    });
+
+    const from = new googleApi.maps.Marker({
+      map,
+      position: { lat: -24.7829, lng: -65.4232 },
+      title: "Desde",
+    }) as unknown as MapsMarker;
+
+    const to = new googleApi.maps.Marker({
+      map,
+      position: { lat: -24.782, lng: -65.4218 },
+      title: "Hasta",
+    }) as unknown as MapsMarker;
+
+    setFromMarker(from);
+    setToMarker(to);
+    setMapInstance(map);
+
+    googleApi.maps.event.addListener(map, "click", (event: MapsMouseEvent) => {
+      const clickLat = event.latLng?.lat();
+      const clickLng = event.latLng?.lng();
+      if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
+
+      const point = { lat: clickLat as number, lng: clickLng as number };
+      if (captureTarget === "from") {
+        from.setPosition?.(point);
+        setSegmentFrom(formatLatLngPoint(point));
+      } else {
+        to.setPosition?.(point);
+        setSegmentTo(formatLatLngPoint(point));
+      }
+    });
+  }, [mapReady, mapInstance, captureTarget]);
+
+  useEffect(() => {
+    if (!fromMarker) return;
+    const parsed = parseLatLng(segmentFrom);
+    if (!parsed) return;
+    fromMarker.setPosition?.(parsed);
+  }, [segmentFrom, fromMarker]);
+
+  useEffect(() => {
+    if (!toMarker) return;
+    const parsed = parseLatLng(segmentTo);
+    if (!parsed) return;
+    toMarker.setPosition?.(parsed);
+  }, [segmentTo, toMarker]);
 
   async function fetchSpaces() {
     setLoading(true);
@@ -165,6 +401,15 @@ export default function AdminEspaciosPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
+      {mapsKey && (
+        <Script
+          src={`https://maps.googleapis.com/maps/api/js?key=${mapsKey}`}
+          strategy="afterInteractive"
+          onLoad={() => setMapReady(true)}
+          onError={() => setMapsError("No se pudo cargar Google Maps JS")}
+        />
+      )}
+
       <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -199,6 +444,65 @@ export default function AdminEspaciosPage() {
 
         <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
           <p className="text-sm font-medium text-slate-200">Nuevo espacio</p>
+          <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+            <p className="text-xs text-slate-300">Captura en mapa (click para Desde/Hasta)</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCaptureTarget("from")}
+                className={`h-9 rounded-lg border px-3 text-xs ${
+                  captureTarget === "from"
+                    ? "border-emerald-500/60 text-emerald-300"
+                    : "border-slate-700"
+                }`}
+              >
+                Capturar Desde
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaptureTarget("to")}
+                className={`h-9 rounded-lg border px-3 text-xs ${
+                  captureTarget === "to"
+                    ? "border-cyan-500/60 text-cyan-300"
+                    : "border-slate-700"
+                }`}
+              >
+                Capturar Hasta
+              </button>
+            </div>
+            <div id={mapContainerId} className="mt-3 h-64 rounded-lg border border-slate-800 bg-slate-950" />
+            {mapsError && <p className="mt-2 text-xs text-amber-300">{mapsError}</p>}
+          </div>
+          <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+            <p className="text-xs text-slate-300">Generador rapido por tramo de calle</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              <input
+                value={segmentFrom}
+                onChange={(e) => setSegmentFrom(e.target.value)}
+                placeholder="Desde lat,lng"
+                className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"
+              />
+              <input
+                value={segmentTo}
+                onChange={(e) => setSegmentTo(e.target.value)}
+                placeholder="Hasta lat,lng"
+                className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"
+              />
+              <input
+                value={segmentWidthMeters}
+                onChange={(e) => setSegmentWidthMeters(e.target.value)}
+                placeholder="Ancho metros"
+                className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs"
+              />
+              <button
+                type="button"
+                onClick={applySegmentGenerator}
+                className="h-10 rounded-lg border border-cyan-500/40 px-3 text-xs text-cyan-300"
+              >
+                Aplicar tramo
+              </button>
+            </div>
+          </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
             <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Direccion" className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm" />
