@@ -49,6 +49,9 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
       <main className="glass-panel w-full max-w-2xl rounded-2xl p-8">
+        <div className="flex justify-center">
+          <img src="/logo-salta.png" alt="Logo Salta" className="h-11 w-auto" />
+        </div>
         <p className="text-center text-xs uppercase tracking-[0.2em] text-emerald-200">Admin</p>
         <h1 className="mt-3 text-center text-3xl font-semibold tracking-tight">Panel de administracion</h1>
 

@@ -228,6 +228,9 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
       <main className="glass-panel mx-auto w-full max-w-2xl rounded-2xl p-8">
+        <div className="flex justify-center">
+          <img src="/logo-salta.png" alt="Logo Salta" className="h-11 w-auto" />
+        </div>
         <p className="text-center text-xs uppercase tracking-[0.2em] text-emerald-200">Checkout</p>
         <h1 className="mt-3 text-center text-3xl font-semibold tracking-tight">Mercado Pago</h1>
         <p className="mt-2 text-center text-sm text-slate-300">

@@ -59,6 +59,7 @@ export default function PermisionarioPage() {
   const [cashZoneId, setCashZoneId] = useState("");
   const [cashAmount, setCashAmount] = useState(0);
   const [cashLoading, setCashLoading] = useState(false);
+  const [entryLoading, setEntryLoading] = useState(false);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -151,6 +152,37 @@ export default function PermisionarioPage() {
     await checkPlate();
   }
 
+  async function markEntryByPlate() {
+    const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
+    if (!normalizedPlate) {
+      setMessage("Ingresa patente para marcar ingreso");
+      return;
+    }
+
+    setEntryLoading(true);
+    const response = await fetch("/api/permisionario/mark-entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plate: normalizedPlate,
+        zoneId: cashZoneId || null,
+        amount: Math.max(0, Number(cashAmount)),
+        durationMinutes: Math.max(1, cashHours) * 60,
+      }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!response.ok || !data.ok) {
+      setMessage(data.error || "No se pudo marcar ingreso");
+      setEntryLoading(false);
+      return;
+    }
+
+    setMessage("Ingreso registrado por patente. Queda trazado para deuda hasta pago confirmado.");
+    setEntryLoading(false);
+    await checkPlate();
+  }
+
   if (sessionStatus === "loading") {
     return <PageShell>Resolviendo sesion...</PageShell>;
   }
@@ -167,9 +199,12 @@ export default function PermisionarioPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
       <main className="glass-panel mx-auto w-full max-w-3xl rounded-2xl p-8">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="flex items-center gap-3">
+            <img src="/logo-salta.png" alt="Logo Salta" className="h-10 w-auto" />
+            <div>
             <p className="text-xs uppercase tracking-[0.2em] text-amber-300">Permisionario</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Verificar pago por patente</h1>
+            </div>
           </div>
           <Link
             href="/"
@@ -193,6 +228,14 @@ export default function PermisionarioPage() {
             className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-slate-950 disabled:opacity-70"
           >
             {loading ? "Consultando..." : "Consultar"}
+          </button>
+          <button
+            type="button"
+            onClick={markEntryByPlate}
+            disabled={entryLoading}
+            className="inline-flex h-11 items-center rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 text-sm font-medium text-amber-300 disabled:opacity-70"
+          >
+            {entryLoading ? "Marcando..." : "Marcar ingreso campo patente"}
           </button>
         </div>
 

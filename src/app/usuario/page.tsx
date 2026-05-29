@@ -596,9 +596,12 @@ export default function UsuarioPage() {
         )}
 
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="flex items-center gap-3">
+            <img src="/logo-salta.png" alt="Logo Salta" className="h-10 w-auto" />
+            <div>
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Usuario</p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">Mapa de espacios disponibles</h1>
+            </div>
           </div>
           <Link
             href="/"

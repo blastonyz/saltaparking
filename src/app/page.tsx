@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
 
@@ -24,7 +23,6 @@ type PendingUser = {
 
 export default function Home() {
   const { session, sessionStatus, loginWithGoogle, logout } = useAuth();
-  const router = useRouter();
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
 
@@ -55,6 +53,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
+  const [showSessionPopup, setShowSessionPopup] = useState(false);
 
   const canRequestPermisionario = useMemo(() => {
     return session?.user?.permisionarioStatus !== "approved";
@@ -70,20 +69,13 @@ export default function Home() {
   }, [isAuthenticated, role]);
 
   useEffect(() => {
-    if (!isAuthenticated || !role) return;
-
-    if (role === "admin") {
-      router.replace("/admin");
-      return;
+    if (!isAuthenticated) return;
+    const seen = window.sessionStorage.getItem("session-popup-seen");
+    if (!seen) {
+      setShowSessionPopup(true);
+      window.sessionStorage.setItem("session-popup-seen", "1");
     }
-
-    if (role === "permisionario") {
-      router.replace("/permisionario");
-      return;
-    }
-
-    router.replace("/usuario");
-  }, [isAuthenticated, role, router]);
+  }, [isAuthenticated]);
 
   async function saveProfile(requestPermisionario: boolean) {
     setMessage("");
@@ -130,7 +122,16 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
       <main className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl backdrop-blur">
-        <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">ParkApp Salta</p>
+        <div className="flex items-center justify-between gap-3">
+          <img src="/logo-salta.png" alt="Logo Salta" className="h-10 w-auto" />
+          {isAuthenticated && (
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-sm font-semibold text-slate-100">
+              {(session?.user?.email?.[0] || "U").toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-emerald-300">ParkApp Salta</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">SEM Inteligente Salta</h1>
 
         <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
@@ -164,7 +165,7 @@ export default function Home() {
             disabled={sessionStatus === "loading" || isAuthenticated}
             className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-4 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Iniciar con Google
+            Ingresar con Google
           </button>
 
           <button
@@ -302,6 +303,20 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {showSessionPopup && isAuthenticated && (
+          <div className="fixed bottom-5 right-5 z-50 w-full max-w-xs rounded-xl border border-emerald-500/40 bg-slate-900/95 p-4 shadow-xl">
+            <p className="text-sm font-medium text-emerald-300">Sesion iniciada</p>
+            <p className="mt-1 text-xs text-slate-300">Conectado como {session?.user?.email}</p>
+            <button
+              type="button"
+              onClick={() => setShowSessionPopup(false)}
+              className="mt-3 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
+            >
+              Cerrar
+            </button>
           </div>
         )}
       </main>
