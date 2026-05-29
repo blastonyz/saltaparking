@@ -48,14 +48,17 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-      <main className="glass-panel w-full max-w-2xl rounded-2xl p-8">
-        <div className="flex justify-center">
-          <img src="/logo-salta.png" alt="Logo Salta" className="h-11 w-auto" />
+      <main className="glass-panel w-full max-w-2xl overflow-hidden rounded-2xl">
+        <div className="flex w-full items-center justify-between gap-4 bg-white/75 px-6 py-4 rounded-t-2xl">
+          <img src="/logo-salta.png" alt="Logo Salta" className="h-14 w-auto" />
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Admin</p>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-800">Panel de administracion</h1>
+          </div>
         </div>
-        <p className="text-center text-xs uppercase tracking-[0.2em] text-emerald-200">Admin</p>
-        <h1 className="mt-3 text-center text-3xl font-semibold tracking-tight">Panel de administracion</h1>
 
-        <div className="mx-auto mt-6 grid w-full max-w-xl gap-4">
+        <div className="flex flex-col gap-4 p-6">
+        <div className="mx-auto grid w-full max-w-xl gap-4">
           <Link
             href="/admin/permisionarios"
             className="rounded-xl border border-white/25 bg-gradient-to-br from-slate-300/15 via-slate-400/10 to-slate-500/15 p-4 text-center transition hover:border-amber-400/60 hover:bg-amber-500/10"
