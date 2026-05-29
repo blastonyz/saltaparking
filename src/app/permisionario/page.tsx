@@ -70,13 +70,16 @@ export default function PermisionarioPage() {
       const response = await fetch("/api/permisionario/zones", { cache: "no-store" });
       if (!response.ok) return;
       const data = (await response.json()) as ZonesResponse;
-      setZones(data.zones);
       setUsedFallbackZones(Boolean(data.usedFallback));
+
       if (data.zones.length > 0) {
         const randomZone = data.zones[Math.floor(Math.random() * data.zones.length)];
+        setZones([randomZone]);
         setCashZoneId(randomZone.zoneId || "");
         setCashAmount(Math.max(0, Number(randomZone.ratePerHour ?? 0)));
         setMessage(`Zona sugerida aleatoria: ${randomZone.name} (${randomZone.zoneId || "-"})`);
+      } else {
+        setZones([]);
       }
     }
 

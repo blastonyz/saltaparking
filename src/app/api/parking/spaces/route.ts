@@ -80,7 +80,6 @@ export async function GET(req: Request) {
         distanceMeters,
       };
     })
-    .filter((item) => item.availableSpots > 0)
     .filter((item) => (item.distanceMeters == null ? true : item.distanceMeters <= safeRadius))
     .sort((a, b) => {
       if (a.distanceMeters == null && b.distanceMeters == null) return 0;

@@ -135,6 +135,7 @@ export default function UsuarioPage() {
   const [selectionLock, setSelectionLock] = useState(false);
   const [mapAccordionOpen, setMapAccordionOpen] = useState(false);
   const [activePayment, setActivePayment] = useState<ActivePaymentResponse | null>(null);
+  const [parkedLoading, setParkedLoading] = useState(false);
 
   const mapRef = useRef<MapsMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -525,6 +526,34 @@ export default function UsuarioPage() {
     selectNearestFromPoint(lat, lng, "center");
   }
 
+  async function markVehicleAsParked() {
+    if (!selectedSpace) {
+      setStatusMsg("Selecciona una cuadra antes de registrar vehiculo estacionado.");
+      return;
+    }
+
+    setParkedLoading(true);
+    const response = await fetch("/api/parking/parked-vehicle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        zoneId: selectedSpace.zoneId,
+        amount: selectedSpace.ratePerHour,
+        durationMinutes: 60,
+      }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!response.ok || !data.ok) {
+      setStatusMsg(data.error || "No se pudo registrar vehiculo estacionado");
+      setParkedLoading(false);
+      return;
+    }
+
+    setStatusMsg("Vehiculo estacionado registrado. Se marcara deuda hasta confirmar pago.");
+    setParkedLoading(false);
+  }
+
   if (sessionStatus === "loading") {
     return <PageShell>Resolviendo sesion...</PageShell>;
   }
@@ -657,12 +686,34 @@ export default function UsuarioPage() {
                 {selectedSpace ? selectedSpace.name : "Haz click en el mapa, marcador o poligono para elegir cuadra"}
               </p>
               {selectedSpace && (
-                <Link
-                  href={`/checkout?title=${encodeURIComponent(selectedSpace.name)}&unitPrice=${selectedSpace.ratePerHour}&zoneId=${encodeURIComponent(selectedSpace.zoneId || "")}`}
-                  className="mt-2 inline-flex h-9 items-center rounded-md bg-emerald-400 px-3 text-xs font-semibold text-slate-950"
-                >
-                  Pagar cuadra seleccionada
-                </Link>
+                <p className={`mt-1 text-xs ${getAvailabilityBadge(selectedSpace).className}`}>
+                  {getAvailabilityBadge(selectedSpace).label}
+                </p>
+              )}
+              {selectedSpace && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedSpace.availableSpots > 0 ? (
+                    <Link
+                      href={`/checkout?title=${encodeURIComponent(selectedSpace.name)}&unitPrice=${selectedSpace.ratePerHour}&zoneId=${encodeURIComponent(selectedSpace.zoneId || "")}`}
+                      className="inline-flex h-9 items-center rounded-md bg-emerald-400 px-3 text-xs font-semibold text-slate-950"
+                    >
+                      Pagar cuadra seleccionada
+                    </Link>
+                  ) : (
+                    <span className="inline-flex h-9 items-center rounded-md border border-rose-500/40 px-3 text-xs text-rose-300">
+                      Cuadra completa
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={markVehicleAsParked}
+                    disabled={parkedLoading}
+                    className="inline-flex h-9 items-center rounded-md border border-amber-500/40 px-3 text-xs text-amber-300 disabled:opacity-60"
+                  >
+                    {parkedLoading ? "Registrando..." : "Vehiculo estacionado"}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -682,6 +733,9 @@ export default function UsuarioPage() {
                   <p className="mt-1 text-xs text-cyan-300">
                     Libres: {item.availableSpots}/{item.totalSpots} - ${item.ratePerHour}/h
                   </p>
+                  <p className={`mt-1 text-xs ${getAvailabilityBadge(item).className}`}>
+                    {getAvailabilityBadge(item).label}
+                  </p>
                   {item.distanceMeters != null && (
                     <p className="text-xs text-slate-400">Distancia: {Math.round(item.distanceMeters)} m</p>
                   )}
@@ -697,12 +751,18 @@ export default function UsuarioPage() {
                   >
                     Seleccionar en mapa
                   </button>
-                  <Link
-                    href={`/checkout?title=${encodeURIComponent(item.name)}&unitPrice=${item.ratePerHour}&zoneId=${encodeURIComponent(item.zoneId || "")}`}
-                    className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
-                  >
-                    Elegir y pagar
-                  </Link>
+                  {item.availableSpots > 0 ? (
+                    <Link
+                      href={`/checkout?title=${encodeURIComponent(item.name)}&unitPrice=${item.ratePerHour}&zoneId=${encodeURIComponent(item.zoneId || "")}`}
+                      className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
+                    >
+                      Elegir y pagar
+                    </Link>
+                  ) : (
+                    <span className="mt-2 inline-flex h-8 items-center rounded-md border border-rose-500/40 px-2 text-xs text-rose-300">
+                      Completo
+                    </span>
+                  )}
                 </li>
               ))}
               {spaces.length === 0 && (
@@ -764,4 +824,31 @@ function pointInPolygon(
     if (intersects) inside = !inside;
   }
   return inside;
+}
+
+function getAvailabilityBadge(space: {
+  availableSpots: number;
+  totalSpots: number;
+}): { label: string; className: string } {
+  const total = Math.max(1, Number(space.totalSpots || 0));
+  const available = Math.max(0, Number(space.availableSpots || 0));
+
+  if (available <= 0) {
+    return {
+      label: "🔴 Completo",
+      className: "text-rose-300",
+    };
+  }
+
+  if (available <= Math.ceil(total * 0.25)) {
+    return {
+      label: "🟡 Pocos lugares",
+      className: "text-amber-300",
+    };
+  }
+
+  return {
+    label: "🟢 Disponible",
+    className: "text-emerald-300",
+  };
 }

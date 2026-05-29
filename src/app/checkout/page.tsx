@@ -25,7 +25,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
   const [lastSandboxPoint, setLastSandboxPoint] = useState("");
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("production");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("sandbox");
   const [linksAreSame, setLinksAreSame] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
@@ -139,9 +139,9 @@ export default function CheckoutPage() {
       setLastInitPoint(prodPoint);
       setLinksAreSame(Boolean(prodPoint && sandboxPoint && prodPoint === sandboxPoint));
       setStatusMsg(
-        prodPoint
-          ? "Preferencia creada. Usa Produccion para cobro real o Sandbox para pruebas controladas."
-          : "Preferencia creada sin initPoint de produccion."
+        sandboxPoint
+          ? "Preferencia creada. Usa Sandbox para pruebas; Produccion solo si tienes credenciales reales activas."
+          : "Preferencia creada sin sandboxInitPoint."
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -315,17 +315,6 @@ export default function CheckoutPage() {
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setPaymentMode("production")}
-              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
-                paymentMode === "production"
-                  ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
-                  : "border-slate-700 text-slate-300"
-              }`}
-            >
-              Produccion
-            </button>
-            <button
-              type="button"
               onClick={() => setPaymentMode("sandbox")}
               className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
                 paymentMode === "sandbox"
@@ -334,6 +323,17 @@ export default function CheckoutPage() {
               }`}
             >
               Sandbox (pruebas)
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMode("production")}
+              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs ${
+                paymentMode === "production"
+                  ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
+                  : "border-slate-700 text-slate-300"
+              }`}
+            >
+              Produccion
             </button>
           </div>
           {paymentMode === "sandbox" && (
