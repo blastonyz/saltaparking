@@ -2,21 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { getMongoCollection } from "@/lib/mongodb";
-
-type ParkingSpaceDoc = {
-  name: string;
-  address: string;
-  lat: number;
-  lng: number;
-  availableSpots: number;
-  totalSpots: number;
-  ratePerHour: number;
-  zoneId: string | null;
-  assignedPermisionarioEmail?: string | null;
-  blockPolygon?: Array<{ lat: number; lng: number }>;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import {
+  ensureParkingSpacesSeeded,
+  normalizeZoneId,
+  type ParkingSpaceDoc,
+} from "@/lib/parking-spaces";
 
 type CreateSpaceBody = {
   action?: "create" | "seed";
@@ -31,56 +21,6 @@ type CreateSpaceBody = {
   assignedPermisionarioEmail?: string;
   blockPolygon?: Array<{ lat: number; lng: number }>;
 };
-
-function makeSeedBlockPolygon(lat: number, lng: number): Array<{ lat: number; lng: number }> {
-  const deltaLat = 0.0003;
-  const deltaLng = 0.00045;
-  return [
-    { lat: lat - deltaLat, lng: lng - deltaLng },
-    { lat: lat - deltaLat, lng: lng + deltaLng },
-    { lat: lat + deltaLat, lng: lng + deltaLng },
-    { lat: lat + deltaLat, lng: lng - deltaLng },
-  ];
-}
-
-const seedSpaces: Omit<ParkingSpaceDoc, "createdAt" | "updatedAt">[] = [
-  {
-    name: "Balcarce 500",
-    address: "Balcarce 500, Salta",
-    lat: -24.78145,
-    lng: -65.41238,
-    availableSpots: 12,
-    totalSpots: 20,
-    ratePerHour: 900,
-    zoneId: "BAL-500",
-    assignedPermisionarioEmail: null,
-    blockPolygon: makeSeedBlockPolygon(-24.78145, -65.41238),
-  },
-  {
-    name: "Mitre 300",
-    address: "Mitre 300, Salta",
-    lat: -24.78902,
-    lng: -65.41002,
-    availableSpots: 6,
-    totalSpots: 14,
-    ratePerHour: 850,
-    zoneId: "MIT-300",
-    assignedPermisionarioEmail: null,
-    blockPolygon: makeSeedBlockPolygon(-24.78902, -65.41002),
-  },
-  {
-    name: "Caseros 700",
-    address: "Caseros 700, Salta",
-    lat: -24.7934,
-    lng: -65.40577,
-    availableSpots: 9,
-    totalSpots: 16,
-    ratePerHour: 800,
-    zoneId: "CAS-700",
-    assignedPermisionarioEmail: null,
-    blockPolygon: makeSeedBlockPolygon(-24.7934, -65.40577),
-  },
-];
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -116,30 +56,12 @@ export async function POST(req: Request) {
   const collection = await getMongoCollection<ParkingSpaceDoc>("parking_spaces");
 
   if (action === "seed") {
-    const now = new Date();
-
-    for (const item of seedSpaces) {
-      await collection.updateOne(
-        { zoneId: item.zoneId },
-        {
-          $set: {
-            ...item,
-            updatedAt: now,
-          },
-          $setOnInsert: {
-            createdAt: now,
-          },
-        },
-        { upsert: true }
-      );
-    }
-
-    return NextResponse.json({ ok: true, seeded: seedSpaces.length });
+    const seeded = await ensureParkingSpacesSeeded();
+    return NextResponse.json({ ok: true, seeded });
   }
 
   const name = body.name?.trim();
   const address = body.address?.trim();
-  const zoneId = body.zoneId?.trim() || null;
   const assignedPermisionarioEmail = body.assignedPermisionarioEmail?.trim().toLowerCase() || null;
   const blockPolygon = Array.isArray(body.blockPolygon)
     ? body.blockPolygon
@@ -151,6 +73,13 @@ export async function POST(req: Request) {
   const availableSpots = Number(body.availableSpots ?? 0);
   const totalSpots = Number(body.totalSpots ?? 0);
   const ratePerHour = Number(body.ratePerHour ?? 0);
+
+  const zoneId = normalizeZoneId({
+    zoneId: body.zoneId,
+    name: name || "Zona",
+    lat,
+    lng,
+  });
 
   if (!name || !address) {
     return NextResponse.json({ error: "name y address son obligatorios" }, { status: 400 });
@@ -176,20 +105,29 @@ export async function POST(req: Request) {
   }
 
   const now = new Date();
-  await collection.insertOne({
-    name,
-    address,
-    lat,
-    lng,
-    availableSpots,
-    totalSpots,
-    ratePerHour,
-    zoneId,
-    assignedPermisionarioEmail,
-    blockPolygon: blockPolygon.length ? blockPolygon : undefined,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const result = await collection.updateOne(
+    { zoneId },
+    {
+      $set: {
+        name,
+        address,
+        lat,
+        lng,
+        availableSpots,
+        totalSpots,
+        ratePerHour,
+        zoneId,
+        assignedPermisionarioEmail,
+        blockPolygon: blockPolygon.length ? blockPolygon : undefined,
+        updatedAt: now,
+      },
+      $setOnInsert: {
+        createdAt: now,
+      },
+    },
+    { upsert: true }
+  );
 
-  return NextResponse.json({ ok: true });
+  const mode = result.upsertedId ? "created" : "updated";
+  return NextResponse.json({ ok: true, zoneId, mode });
 }

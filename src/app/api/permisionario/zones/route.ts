@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { getMongoCollection } from "@/lib/mongodb";
+import { ensureParkingSpacesSeeded } from "@/lib/parking-spaces";
 
 type ParkingSpaceDoc = {
   _id: unknown;
@@ -29,6 +30,8 @@ export async function GET() {
   if (role !== "permisionario" && role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  await ensureParkingSpacesSeeded();
 
   const collection = await getMongoCollection<ParkingSpaceDoc>("parking_spaces");
 

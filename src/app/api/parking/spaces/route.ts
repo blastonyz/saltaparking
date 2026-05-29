@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { getMongoCollection } from "@/lib/mongodb";
+import { ensureParkingSpacesSeeded } from "@/lib/parking-spaces";
 
 type ParkingSpaceDoc = {
   _id?: unknown;
@@ -46,6 +47,8 @@ export async function GET(req: Request) {
 
   const hasValidCoords = Number.isFinite(lat) && Number.isFinite(lng);
   const safeRadius = Number.isFinite(radius) && radius > 0 ? Math.min(radius, 10000) : 2000;
+
+  await ensureParkingSpacesSeeded();
 
   const collection = await getMongoCollection<ParkingSpaceDoc>("parking_spaces");
   const docs = await collection.find({}).limit(300).toArray();

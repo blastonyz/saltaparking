@@ -38,6 +38,12 @@ type CashPaymentResponse = {
   expiresAt: string;
 };
 
+type PreferenceResponse = {
+  preferenceId: string;
+  initPoint?: string;
+  sandboxInitPoint?: string;
+};
+
 export default function PermisionarioPage() {
   const { sessionStatus, session } = useAuth();
   const [plate, setPlate] = useState("");
@@ -59,6 +65,7 @@ export default function PermisionarioPage() {
   const [cashZoneId, setCashZoneId] = useState("");
   const [cashAmount, setCashAmount] = useState(0);
   const [cashLoading, setCashLoading] = useState(false);
+  const [mpLinkLoading, setMpLinkLoading] = useState(false);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -144,6 +151,59 @@ export default function PermisionarioPage() {
     );
     setCashLoading(false);
     await checkPlate();
+  }
+
+  async function generateMercadoPagoLink(params: {
+    title: string;
+    zoneId: string | null;
+    ratePerHour: number;
+  }) {
+    const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
+    if (!normalizedPlate) {
+      setMessage("Ingresa patente para generar link directo de Mercado Pago");
+      return;
+    }
+
+    const durationMinutes = Math.max(1, cashHours) * 60;
+    const quantity = Math.max(1, cashHours);
+
+    setMpLinkLoading(true);
+    const response = await fetch("/api/mercadopago/preference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: params.title,
+        quantity,
+        unitPrice: Math.max(1, Number(params.ratePerHour || 1)),
+        plate: normalizedPlate,
+        zoneId: params.zoneId || undefined,
+        durationMinutes,
+      }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as
+      | PreferenceResponse
+      | { error?: string };
+
+    if (!response.ok || !("preferenceId" in data)) {
+      setMessage("error" in data && data.error ? data.error : "No se pudo generar link directo MP");
+      setMpLinkLoading(false);
+      return;
+    }
+
+    const initPoint = data.sandboxInitPoint || data.initPoint || "";
+    if (!initPoint) {
+      setMessage("Mercado Pago no devolvio init_point");
+      setMpLinkLoading(false);
+      return;
+    }
+
+    const qr = await QRCode.toDataURL(initPoint, { width: 260, margin: 1 });
+    setQrZoneId(`mp-${params.zoneId || "manual"}`);
+    setQrDataUrl(qr);
+    setLastGeneratedLink(initPoint);
+    setMessage("Link directo de Mercado Pago generado");
+    setMpLinkLoading(false);
   }
 
   if (sessionStatus === "loading") {
@@ -328,6 +388,20 @@ export default function PermisionarioPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    void generateMercadoPagoLink({
+                      title: zone.name,
+                      zoneId: zone.zoneId,
+                      ratePerHour: zone.ratePerHour,
+                    });
+                  }}
+                  disabled={mpLinkLoading}
+                  className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-lime-500/40 px-2 text-xs text-lime-300 disabled:opacity-60"
+                >
+                  {mpLinkLoading ? "Generando..." : "Link directo MP"}
+                </button>
+                <button
+                  type="button"
                   onClick={async () => {
                     const baseUrl = window.location.origin;
                     const transferUrl = `${baseUrl}/transfer?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}&alias=${encodeURIComponent(transferAlias)}&cbu=${encodeURIComponent(transferCbu)}&owner=${encodeURIComponent(transferOwner)}`;
@@ -401,6 +475,20 @@ export default function PermisionarioPage() {
                 className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
               >
                 Generar QR manual (transferencia)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void generateMercadoPagoLink({
+                    title: manualZoneName || "Cobro rapido",
+                    zoneId: manualZoneId || "MANUAL",
+                    ratePerHour: manualRatePerHour,
+                  });
+                }}
+                disabled={mpLinkLoading}
+                className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-lime-500/40 px-2 text-xs text-lime-300 disabled:opacity-60"
+              >
+                {mpLinkLoading ? "Generando..." : "Link directo MP"}
               </button>
             </div>
           )}

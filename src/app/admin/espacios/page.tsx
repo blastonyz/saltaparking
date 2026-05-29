@@ -379,7 +379,14 @@ export default function AdminEspaciosPage() {
       return;
     }
 
-    setMessage("Espacio creado");
+    const data = (await response.json()) as {
+      ok: boolean;
+      zoneId?: string;
+      mode?: "created" | "updated";
+    };
+
+    const modeLabel = data.mode === "updated" ? "actualizada" : "creada";
+    setMessage(`Zona ${data.zoneId || "(sin id)"} ${modeLabel} correctamente`);
     setName("");
     setAddress("");
     setZoneId("");
