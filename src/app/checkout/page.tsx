@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
+  const [lastSandboxPoint, setLastSandboxPoint] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
@@ -119,8 +120,16 @@ export default function CheckoutPage() {
         throw new Error("error" in data ? data.error : "No se pudo crear la preferencia");
       }
 
-      setLastInitPoint(data.sandboxInitPoint || data.initPoint || "");
-      setStatusMsg("Preferencia creada. Abre el checkout para completar el pago.");
+      const sandboxPoint = data.sandboxInitPoint || "";
+      const prodPoint = data.initPoint || "";
+
+      setLastSandboxPoint(sandboxPoint);
+      setLastInitPoint(sandboxPoint || prodPoint);
+      setStatusMsg(
+        sandboxPoint
+          ? "Preferencia creada. Sandbox listo para abrir checkout."
+          : "Preferencia creada. No vino sandboxInitPoint, usando initPoint."
+      );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setStatusMsg("La solicitud tardó demasiado. Intenta nuevamente.");
@@ -142,7 +151,8 @@ export default function CheckoutPage() {
   }, []);
 
   function openCheckoutPopup() {
-    if (!lastInitPoint) {
+    const targetUrl = lastSandboxPoint || lastInitPoint;
+    if (!targetUrl) {
       setStatusMsg("Primero genera una preferencia.");
       return;
     }
@@ -152,11 +162,14 @@ export default function CheckoutPage() {
       popupWatchRef.current = null;
     }
 
-    const popup = window.open(lastInitPoint, "mp_checkout", "width=520,height=740,noopener,noreferrer");
+    const popup = window.open("", "mp_checkout", "popup=yes,width=520,height=740");
     if (!popup) {
       setStatusMsg("No se pudo abrir la ventana. Habilita popups o usa 'Abrir checkout'.");
       return;
     }
+
+    popup.location.href = targetUrl;
+    popup.focus();
 
     popupRef.current = popup;
     setCheckoutOpen(true);
@@ -347,6 +360,7 @@ export default function CheckoutPage() {
             setLoading(false);
             loadingSinceRef.current = null;
             setLastInitPoint("");
+            setLastSandboxPoint("");
             setQrDataUrl("");
             setCheckoutOpen(false);
 
@@ -366,7 +380,7 @@ export default function CheckoutPage() {
           Reiniciar checkout
         </button>
 
-        {lastInitPoint && (
+        {(lastSandboxPoint || lastInitPoint) && (
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
@@ -377,13 +391,24 @@ export default function CheckoutPage() {
             </button>
 
             <a
-              href={lastInitPoint}
+              href={lastSandboxPoint || lastInitPoint}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm"
             >
               Abrir checkout en pestana
             </a>
+
+            {lastSandboxPoint && lastInitPoint && lastSandboxPoint !== lastInitPoint && (
+              <a
+                href={lastInitPoint}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-10 items-center rounded-lg border border-cyan-500/40 px-4 text-sm text-cyan-300"
+              >
+                Abrir initPoint
+              </a>
+            )}
           </div>
         )}
 
