@@ -65,7 +65,7 @@ export default function CheckoutPage() {
           initialization: { amount },
           customization: {
             paymentMethods: { creditCard: "all", debitCard: "all" },
-            visual: { style: { theme: "default" }, hideFormTitle: true },
+            visual: { style: { theme: "dark" }, hideFormTitle: true },
           },
           callbacks: {
             onReady: () => setBrickReady(true),
@@ -250,32 +250,44 @@ export default function CheckoutPage() {
                 {!brickReady && (
                   <p className="py-8 text-center text-sm text-slate-400">Cargando formulario de pago...</p>
                 )}
+
+                {/* card icon label */}
+                <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                    <line x1="1" y1="10" x2="23" y2="10" />
+                  </svg>
+                  Pagar con tarjeta
+                </div>
                 <div id="mp-payment-brick" />
 
-                <div className="mt-4 flex items-center gap-3">
+                <div className="mt-5 flex items-center gap-3">
                   <div className="flex-1 border-t border-slate-700" />
                   <span className="text-xs text-slate-500">o</span>
                   <div className="flex-1 border-t border-slate-700" />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!plateRef.current) {
-                      setStatusMsg("Ingresa la patente primero");
-                      return;
-                    }
-                    setStatusMsg("");
-                    setCashModal(true);
-                  }}
-                  className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20 active:scale-95"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                  </svg>
-                  Pagar en Efectivo
-                </button>
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!plateRef.current) {
+                        setStatusMsg("Ingresa la patente primero");
+                        return;
+                      }
+                      setStatusMsg("");
+                      setCashModal(true);
+                    }}
+                    className="inline-flex h-11 w-56 items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20 active:scale-95"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="6" width="20" height="12" rx="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <path d="M6 12h.01M18 12h.01" />
+                    </svg>
+                    Pagar en Efectivo
+                  </button>
+                </div>
               </div>
             )}
 

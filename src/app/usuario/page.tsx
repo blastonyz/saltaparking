@@ -720,58 +720,9 @@ export default function UsuarioPage() {
               )}
             </div>
 
-            <p className="text-sm font-medium text-slate-200">Espacios disponibles ({spaces.length})</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              {spaces.map((item, idx) => (
-                <li
-                  key={item.id || `${item.zoneId || item.name}-${idx}`}
-                  className={`rounded-md border p-2 ${
-                    selectedSpace?.id === item.id
-                      ? "border-emerald-500/70 bg-emerald-950/20"
-                      : "border-slate-800"
-                  }`}
-                >
-                  <p className="text-slate-100">{item.name}</p>
-                  <p className="text-xs text-slate-400">{item.address}</p>
-                  <p className="mt-1 text-xs text-cyan-300">
-                    Libres: {item.availableSpots}/{item.totalSpots} - ${item.ratePerHour}/h
-                  </p>
-                  <p className={`mt-1 text-xs ${getAvailabilityBadge(item).className}`}>
-                    {getAvailabilityBadge(item).label}
-                  </p>
-                  {item.distanceMeters != null && (
-                    <p className="text-xs text-slate-400">Distancia: {Math.round(item.distanceMeters)} m</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedSpace(item);
-                      mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
-                      mapRef.current?.setZoom(17);
-                      setStatusMsg(`Cuadra seleccionada: ${item.name}`);
-                    }}
-                    className="mt-2 mr-2 inline-flex h-8 items-center rounded-md border border-cyan-500/40 px-2 text-xs text-cyan-300"
-                  >
-                    Seleccionar en mapa
-                  </button>
-                  {item.availableSpots > 0 ? (
-                    <Link
-                      href={`/checkout?title=${encodeURIComponent(item.name)}&unitPrice=${item.ratePerHour}&zoneId=${encodeURIComponent(item.zoneId || "")}`}
-                      className="mt-2 inline-flex h-8 items-center rounded-md border border-emerald-500/40 px-2 text-xs text-emerald-300"
-                    >
-                      Elegir y pagar
-                    </Link>
-                  ) : (
-                    <span className="mt-2 inline-flex h-8 items-center rounded-md border border-rose-500/40 px-2 text-xs text-rose-300">
-                      Completo
-                    </span>
-                  )}
-                </li>
-              ))}
-              {spaces.length === 0 && (
-                <li className="text-xs text-slate-400">No hay espacios disponibles en el radio consultado.</li>
-              )}
-            </ul>
+            {!selectedSpace && (
+              <p className="mt-3 text-xs text-slate-400">Haz click en el mapa o en un poligono para seleccionar una cuadra.</p>
+            )}
           </div>
           </div>
         )}
