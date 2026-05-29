@@ -478,47 +478,6 @@ export default function PermisionarioPage() {
           </>
         )}
 
-        {/* â”€â”€ ZONA tab â”€â”€ */}
-        {activeTab === "zona" && (
-          <>
-            <div className="text-center mt-2 mb-1">
-              <h1 className="text-2xl font-bold text-slate-100">Estado de la Cuadra</h1>
-              <p className="text-sm text-slate-400 mt-1">Seleccione la disponibilidad reportada</p>
-            </div>
-            {(["disponible", "pocos", "lleno"] as const).map((status) => {
-              const cfg = {
-                disponible: { activeBorder: "border-emerald-500", activeBg: "bg-emerald-500/15", dot: "bg-emerald-500 shadow-emerald-500/50", label: "Disponible",    desc: "MÃºltiples lugares libres en esta zona." },
-                pocos:      { activeBorder: "border-orange-500",  activeBg: "bg-orange-500/15",  dot: "bg-orange-400 shadow-orange-400/50",  label: "Pocos Lugares", desc: "Alta ocupaciÃ³n. Estacionamiento limitado." },
-                lleno:      { activeBorder: "border-rose-500",    activeBg: "bg-rose-500/15",    dot: "bg-rose-500 shadow-rose-500/50",     label: "Lleno",         desc: "Capacidad mÃ¡xima. Busque alternativas." },
-              }[status];
-              const active = zoneAvailability === status;
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setZoneAvailability(status)}
-                  className={`relative overflow-hidden rounded-xl border-2 flex items-center p-5 min-h-[100px] text-left w-full transition-all active:scale-[0.98] ${active ? `${cfg.activeBorder} ${cfg.activeBg}` : "border-slate-700/50 bg-slate-800/30 hover:border-slate-600"}`}
-                >
-                  <div className="flex items-center gap-5 w-full">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 ${active ? cfg.activeBg : "bg-slate-700/50"}`}>
-                      <div className={`w-6 h-6 rounded-full shadow-lg ${cfg.dot}`} />
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-lg font-bold text-slate-100">{cfg.label}</h2>
-                      <p className="text-sm text-slate-400 mt-0.5">{cfg.desc}</p>
-                    </div>
-                    {active && (
-                      <svg className="h-6 w-6 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </>
-        )}
-
         {/* â”€â”€ PERFIL tab â”€â”€ */}
         {activeTab === "perfil" && (
           <>
