@@ -169,6 +169,18 @@ export default function UsuarioPage() {
       const clickLng = event.latLng?.lng();
       if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
 
+      const containing = spacesRef.current.find(
+        (item) => item.blockPolygon.length >= 3 && pointInPolygon(item.blockPolygon, clickLat as number, clickLng as number)
+      );
+
+      if (containing) {
+        setSelectedSpace(containing);
+        mapRef.current?.setCenter({ lat: containing.lat, lng: containing.lng });
+        mapRef.current?.setZoom(17);
+        setStatusMsg(`Cuadra seleccionada: ${containing.name}`);
+        return;
+      }
+
       let nearest: Space | null = null;
       let nearestDistance = Number.POSITIVE_INFINITY;
 
@@ -180,15 +192,21 @@ export default function UsuarioPage() {
         }
       }
 
-      if (!nearest || nearestDistance > 220) {
-        setStatusMsg("No se encontro una cuadra cercana. Acercate mas o usa la lista lateral.");
+      if (!nearest) {
+        setStatusMsg("No hay cuadras cargadas para seleccionar en el mapa.");
         return;
       }
 
       setSelectedSpace(nearest);
       mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
       mapRef.current?.setZoom(17);
-      setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
+      if (nearestDistance > 1200) {
+        setStatusMsg(
+          `Seleccionada la cuadra mas cercana (${nearest.name}) a ${Math.round(nearestDistance)} m. Conviene recargar espacios en esa zona.`
+        );
+      } else {
+        setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
+      }
     });
 
     if (position) {
@@ -563,4 +581,22 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+function pointInPolygon(
+  polygon: Array<{ lat: number; lng: number }>,
+  lat: number,
+  lng: number
+): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lng;
+    const yi = polygon[i].lat;
+    const xj = polygon[j].lng;
+    const yj = polygon[j].lat;
+
+    const intersects = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
 }
