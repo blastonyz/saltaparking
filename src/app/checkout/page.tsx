@@ -1,209 +1,120 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import QRCode from "qrcode";
 import { useAuth } from "@/app/context/auth-context";
 
-type PreferenceResponse = {
-  preferenceId: string;
-  sandboxInitPoint?: string;
-  diagnostics?: {
-    accessTokenType?: "test" | "prod" | "missing";
-    publicKeyType?: "test" | "prod" | "missing";
-  };
-};
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface Window { MercadoPago: any; }
+}
 
 export default function CheckoutPage() {
   const { session } = useAuth();
   const [title, setTitle] = useState("Hora de estacionamiento");
-  const [quantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(1000);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [plate, setPlate] = useState("");
-  const [zoneId, setZoneId] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [lastSandboxPoint, setLastSandboxPoint] = useState("");
-  const [qrDataUrl, setQrDataUrl] = useState("");
-  const loadingSinceRef = useRef<number | null>(null);
+  const [paymentDone, setPaymentDone] = useState(false);
+  const [brickReady, setBrickReady] = useState(false);
 
+  const brickRef = useRef<{ unmount: () => void } | null>(null);
+  const plateRef = useRef("");
   const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
 
+  useEffect(() => { plateRef.current = normalizedPlate; }, [normalizedPlate]);
+
   useEffect(() => {
-    if (session?.user?.plate && !normalizedPlate) {
+    if (session?.user?.plate && !plateRef.current) {
       setPlate(String(session.user.plate).toUpperCase());
     }
-  }, [session?.user?.plate, normalizedPlate]);
+  }, [session?.user?.plate]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const nextTitle = params.get("title");
-    const nextRate = params.get("unitPrice");
-    const nextZone = params.get("zoneId");
-    const nextDuration = params.get("durationMinutes");
-    const nextPlate = params.get("plate");
-    const status = params.get("status");
 
-    if (nextTitle) setTitle(nextTitle);
-    if (nextRate && Number.isFinite(Number(nextRate))) setUnitPrice(Number(nextRate));
-    if (nextZone) setZoneId(nextZone);
-    if (nextDuration && Number.isFinite(Number(nextDuration))) {
-      setDurationMinutes(Math.max(1, Number(nextDuration)));
-    }
-    if (nextPlate) setPlate(nextPlate.toUpperCase());
+    let price = 1000;
+    let duration = 60;
+    let zone = "";
+    let parsedTitle = "Hora de estacionamiento";
 
-    if (status === "failure") {
-      setLoading(false);
-      loadingSinceRef.current = null;
-      setStatusMsg("Pago cancelado o rechazado. Puedes reintentar.");
-    } else if (status === "pending") {
-      setLoading(false);
-      loadingSinceRef.current = null;
-      setStatusMsg("Pago pendiente de confirmacion.");
-    } else if (status === "success") {
-      setLoading(false);
-      loadingSinceRef.current = null;
-      setStatusMsg("Pago enviado. Estamos confirmando.");
+    if (params.get("title")) { parsedTitle = params.get("title")!; setTitle(parsedTitle); }
+    if (params.get("unitPrice") && Number.isFinite(+params.get("unitPrice")!)) {
+      price = +params.get("unitPrice")!;
+      setUnitPrice(price);
     }
+    if (params.get("zoneId")) { zone = params.get("zoneId")!; }
+    if (params.get("durationMinutes") && Number.isFinite(+params.get("durationMinutes")!)) {
+      duration = Math.max(1, +params.get("durationMinutes")!);
+      setDurationMinutes(duration);
+    }
+    if (params.get("plate")) setPlate(params.get("plate")!.toUpperCase());
+
+    const amount = price;
+
+    function createBrick() {
+      if (!window.MercadoPago) return;
+      if (brickRef.current) { brickRef.current.unmount(); brickRef.current = null; }
+
+      const mp = new window.MercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY, { locale: "es-AR" });
+      mp.bricks()
+        .create("payment", "mp-payment-brick", {
+          initialization: { amount },
+          customization: {
+            paymentMethods: { creditCard: "all", debitCard: "all" },
+            visual: { style: { theme: "dark" }, hideFormTitle: true },
+          },
+          callbacks: {
+            onReady: () => setBrickReady(true),
+            onSubmit: async ({ formData }: { formData: Record<string, unknown> }) => {
+              if (!plateRef.current) throw new Error("Ingresa la patente primero");
+              const res = await fetch("/api/mercadopago/payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...formData,
+                  plate: plateRef.current,
+                  durationMinutes: duration,
+                  zoneId: zone,
+                  title: parsedTitle,
+                }),
+              });
+              const data = (await res.json()) as { status?: string; statusDetail?: string; error?: string };
+              if (!res.ok) throw new Error(data.error ?? "Error al procesar el pago");
+              if (data.status === "approved") {
+                setPaymentDone(true);
+                setStatusMsg("¡Pago aprobado! Tu tiempo de estacionamiento esta confirmado.");
+                brickRef.current?.unmount();
+              } else if (data.status === "pending") {
+                setPaymentDone(true);
+                setStatusMsg("Pago en proceso. Te notificaremos cuando se confirme.");
+                brickRef.current?.unmount();
+              } else {
+                throw new Error(`Pago ${data.statusDetail ?? "rechazado"}. Verifica los datos e intenta nuevamente.`);
+              }
+            },
+            onError: (error: unknown) => console.error("Brick error:", error),
+          },
+        })
+        .then((brick: { unmount: () => void }) => { brickRef.current = brick; })
+        .catch((err: unknown) => console.error("Failed to init brick:", err));
+    }
+
+    if (window.MercadoPago) {
+      createBrick();
+    } else {
+      const existing = document.querySelector('script[src*="sdk.mercadopago.com"]');
+      if (existing) {
+        existing.addEventListener("load", createBrick, { once: true });
+      } else {
+        const s = document.createElement("script");
+        s.src = "https://sdk.mercadopago.com/js/v2";
+        s.onload = createBrick;
+        document.head.appendChild(s);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function handleCreatePreference() {
-    if (!normalizedPlate) {
-      setStatusMsg("Patente requerida para generar el pago");
-      return;
-    }
-
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      setStatusMsg("Cantidad invalida");
-      return;
-    }
-
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      setStatusMsg("Monto invalido");
-      return;
-    }
-
-    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-      setStatusMsg("Duracion invalida");
-      return;
-    }
-
-    setLoading(true);
-    loadingSinceRef.current = Date.now();
-    setStatusMsg("");
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-
-      const response = await fetch("/api/mercadopago/preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          quantity,
-          unitPrice,
-          plate: normalizedPlate,
-          zoneId,
-          durationMinutes,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      const data = (await response.json()) as PreferenceResponse | { error: string };
-
-      if (!response.ok || "error" in data) {
-        throw new Error("error" in data ? data.error : "No se pudo crear la preferencia");
-      }
-
-      const sandboxPoint = data.sandboxInitPoint || "";
-      setLastSandboxPoint(sandboxPoint);
-
-      if (sandboxPoint) {
-        window.open(sandboxPoint, "_blank", "noopener,noreferrer");
-      } else {
-        setStatusMsg("No se obtuvo link de pago. Intenta nuevamente.");
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        setStatusMsg("La solicitud tardó demasiado. Intenta nuevamente.");
-      } else {
-        setStatusMsg(error instanceof Error ? error.message : "Error inesperado");
-      }
-    } finally {
-      setLoading(false);
-      loadingSinceRef.current = null;
-    }
-  }
-
-  const selectedUrl = lastSandboxPoint;
-
-  useEffect(() => {
-    async function generateQr() {
-      const targetUrl = lastSandboxPoint;
-
-      if (!targetUrl) {
-        setQrDataUrl("");
-        return;
-      }
-
-      try {
-        const result = await QRCode.toDataURL(targetUrl, {
-          width: 260,
-          margin: 1,
-          errorCorrectionLevel: "M",
-        });
-        setQrDataUrl(result);
-      } catch {
-        setQrDataUrl("");
-      }
-    }
-
-    void generateQr();
-  }, [lastSandboxPoint]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!loading || !loadingSinceRef.current) return;
-
-      const staleForMs = Date.now() - loadingSinceRef.current;
-      if (staleForMs > 20000) {
-        setLoading(false);
-        loadingSinceRef.current = null;
-        setStatusMsg("Se recuperó el estado de carga. Puedes intentar nuevamente.");
-      }
-    }, 1500);
-
-    return () => clearInterval(interval);
-  }, [loading]);
-
-  useEffect(() => {
-    function recoverIfStale() {
-      if (!loading || !loadingSinceRef.current) return;
-
-      const staleForMs = Date.now() - loadingSinceRef.current;
-      if (staleForMs > 5000) {
-        setLoading(false);
-        loadingSinceRef.current = null;
-        setStatusMsg("Volviste. Si cancelaste, puedes reintentar el pago.");
-      }
-    }
-
-    function onVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        recoverIfStale();
-      }
-    }
-
-    window.addEventListener("focus", recoverIfStale);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", recoverIfStale);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [loading]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
@@ -213,7 +124,6 @@ export default function CheckoutPage() {
         </div>
         <h1 className="mt-4 text-center text-3xl font-semibold tracking-tight">Pagar</h1>
 
-        {/* Resumen de pago — solo lectura */}
         <div className="mt-6 rounded-xl border border-slate-700 bg-slate-900/60 divide-y divide-slate-800">
           <div className="flex items-center justify-between px-4 py-3 text-sm">
             <span className="text-slate-400">Concepto</span>
@@ -224,7 +134,7 @@ export default function CheckoutPage() {
             <span className="font-medium text-slate-100">${unitPrice.toLocaleString("es-AR")} ARS</span>
           </div>
           <div className="flex items-center justify-between px-4 py-3 text-sm">
-            <span className="text-slate-400">Duración</span>
+            <span className="text-slate-400">Duracion</span>
             <span className="font-medium text-slate-100">
               {durationMinutes >= 60
                 ? `${Math.floor(durationMinutes / 60)}h${durationMinutes % 60 > 0 ? ` ${durationMinutes % 60}min` : ""}`
@@ -233,11 +143,10 @@ export default function CheckoutPage() {
           </div>
           <div className="flex items-center justify-between px-4 py-3 text-sm">
             <span className="text-slate-400">Total</span>
-            <span className="text-lg font-semibold text-emerald-300">${(unitPrice * quantity).toLocaleString("es-AR")} ARS</span>
+            <span className="text-lg font-semibold text-emerald-300">${unitPrice.toLocaleString("es-AR")} ARS</span>
           </div>
         </div>
 
-        {/* Patente — único campo editable */}
         <label className="mt-4 flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Patente</span>
           <input
@@ -248,61 +157,19 @@ export default function CheckoutPage() {
           />
         </label>
 
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={handleCreatePreference}
-            disabled={loading || !normalizedPlate}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-5 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
-          >
-            {loading ? "Procesando..." : "Pagar"}
-          </button>
-        </div>
-
-        {!normalizedPlate && (
-          <p className="mt-2 text-xs text-amber-300">Completa la patente para habilitar el pago.</p>
-        )}
-
-        {!!statusMsg && !lastSandboxPoint && (
-          <p className="mt-4 text-center text-sm text-slate-200">{statusMsg}</p>
-        )}
-
-        {lastSandboxPoint && (
-          <div className="mt-4">
-            <a
-              href={selectedUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-16 w-full items-center justify-center rounded-xl bg-[#FFE600] transition hover:bg-yellow-300 active:scale-95"
-            >
-              <img
-                src="https://http2.mlstatic.com/storage/logos-api-admin/5c2a84d0-ccfc-11ef-b4ad-3f7be6b695b7-xl.png"
-                alt="Mercado Pago"
-                className="h-9 w-auto"
-              />
-            </a>
-          </div>
-        )}
-
-        {lastSandboxPoint && (
-          <div className="glass-panel mt-5 rounded-xl p-4 text-center">
-            <p className="text-sm font-medium text-slate-200">QR de pago</p>
-            <p className="mt-1 text-xs text-slate-300">
-              Compartelo para pagar escaneando desde el telefono.
-            </p>
-
-            {qrDataUrl ? (
-              <img
-                src={qrDataUrl}
-                alt="QR de pago"
-                className="mx-auto mt-3 h-[220px] w-[220px] rounded-md border border-slate-800 bg-white p-2"
-              />
-            ) : (
-              <p className="mt-3 text-xs text-amber-300">No se pudo generar el QR.</p>
+        {!paymentDone && (
+          <div className="mt-6">
+            {!brickReady && (
+              <p className="py-8 text-center text-sm text-slate-400">Cargando formulario de pago...</p>
             )}
-
-            <p className="mt-3 text-xs text-slate-400">Escaneá para pagar desde el celular</p>
+            <div id="mp-payment-brick" />
           </div>
+        )}
+
+        {statusMsg && (
+          <p className={`mt-4 text-center text-sm ${paymentDone ? "text-emerald-400" : "text-slate-200"}`}>
+            {statusMsg}
+          </p>
         )}
       </main>
     </div>
