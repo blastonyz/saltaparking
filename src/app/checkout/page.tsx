@@ -25,14 +25,23 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
   const [lastSandboxPoint, setLastSandboxPoint] = useState("");
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("production");
+  const [linksAreSame, setLinksAreSame] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
-  const popupRef = useRef<Window | null>(null);
-  const popupWatchRef = useRef<number | null>(null);
 
   const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("checkout-payment-mode");
+    if (stored === "production" || stored === "sandbox") {
+      setPaymentMode(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("checkout-payment-mode", paymentMode);
+  }, [paymentMode]);
 
   useEffect(() => {
     if (session?.user?.plate && !normalizedPlate) {
@@ -127,11 +136,12 @@ export default function CheckoutPage() {
       const prodPoint = data.initPoint || "";
 
       setLastSandboxPoint(sandboxPoint);
-      setLastInitPoint(prodPoint || sandboxPoint);
+      setLastInitPoint(prodPoint);
+      setLinksAreSame(Boolean(prodPoint && sandboxPoint && prodPoint === sandboxPoint));
       setStatusMsg(
         prodPoint
           ? "Preferencia creada. Usa Produccion para cobro real o Sandbox para pruebas controladas."
-          : "Preferencia creada. No vino initPoint, usando sandboxInitPoint."
+          : "Preferencia creada sin initPoint de produccion."
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -145,63 +155,13 @@ export default function CheckoutPage() {
     }
   }
 
-  useEffect(() => {
-    return () => {
-      if (popupWatchRef.current) {
-        window.clearInterval(popupWatchRef.current);
-      }
-    };
-  }, []);
-
-  function openCheckoutPopup() {
-    const targetUrl =
-      paymentMode === "sandbox"
-        ? lastSandboxPoint || lastInitPoint
-        : lastInitPoint || lastSandboxPoint;
-    if (!targetUrl) {
-      setStatusMsg("Primero genera una preferencia.");
-      return;
-    }
-
-    if (popupWatchRef.current) {
-      window.clearInterval(popupWatchRef.current);
-      popupWatchRef.current = null;
-    }
-
-    const popup = window.open("", "mp_checkout", "popup=yes,width=520,height=740");
-    if (!popup) {
-      setStatusMsg("No se pudo abrir la ventana. Habilita popups o usa 'Abrir checkout'.");
-      return;
-    }
-
-    popup.location.href = targetUrl;
-    popup.focus();
-
-    popupRef.current = popup;
-    setCheckoutOpen(true);
-    setStatusMsg("Checkout abierto. Si lo cierras, puedes reintentar sin recargar.");
-
-    popupWatchRef.current = window.setInterval(() => {
-      if (!popupRef.current || popupRef.current.closed) {
-        setCheckoutOpen(false);
-        setLoading(false);
-        loadingSinceRef.current = null;
-        setStatusMsg("Checkout cerrado. Si cancelaste el pago, puedes intentarlo nuevamente.");
-
-        if (popupWatchRef.current) {
-          window.clearInterval(popupWatchRef.current);
-          popupWatchRef.current = null;
-        }
-      }
-    }, 600);
-  }
+  const selectedUrl = paymentMode === "sandbox" ? lastSandboxPoint : lastInitPoint;
+  const hasSelectedUrl = Boolean(selectedUrl);
 
   useEffect(() => {
     async function generateQr() {
       const targetUrl =
-        paymentMode === "sandbox"
-          ? lastSandboxPoint || lastInitPoint
-          : lastInitPoint || lastSandboxPoint;
+        paymentMode === "sandbox" ? lastSandboxPoint : lastInitPoint;
 
       if (!targetUrl) {
         setQrDataUrl("");
@@ -267,10 +227,10 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <main className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl">
-        <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Checkout</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Mercado Pago - Pruebas</h1>
-        <p className="mt-2 text-sm text-slate-400">
+      <main className="glass-panel mx-auto w-full max-w-2xl rounded-2xl p-8">
+        <p className="text-center text-xs uppercase tracking-[0.2em] text-emerald-200">Checkout</p>
+        <h1 className="mt-3 text-center text-3xl font-semibold tracking-tight">Mercado Pago</h1>
+        <p className="mt-2 text-center text-sm text-slate-300">
           Crea una preferencia de pago y usa tus tarjetas de prueba en el checkout de Mercado Pago.
         </p>
 
@@ -350,7 +310,7 @@ export default function CheckoutPage() {
           </label>
         </div>
 
-        <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950/70 p-3">
+        <div className="glass-panel mt-4 rounded-lg p-3">
           <p className="text-xs text-slate-300">Modo de checkout</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
@@ -381,105 +341,88 @@ export default function CheckoutPage() {
               En Sandbox, comprador y vendedor deben ser cuentas de prueba para evitar error de partes mezcladas.
             </p>
           )}
+          {paymentMode === "production" && !lastInitPoint && (lastInitPoint || lastSandboxPoint) && (
+            <p className="mt-2 text-xs text-rose-300">No hay link de produccion disponible para esta preferencia.</p>
+          )}
+          {paymentMode === "sandbox" && !lastSandboxPoint && (lastInitPoint || lastSandboxPoint) && (
+            <p className="mt-2 text-xs text-rose-300">No hay link sandbox disponible para esta preferencia.</p>
+          )}
+          {linksAreSame && (
+            <p className="mt-2 text-xs text-amber-300">
+              Tu credencial actual devuelve la misma URL para Sandbox y Produccion. No hay separacion real en este entorno.
+            </p>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleCreatePreference}
-          disabled={loading || !normalizedPlate}
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-5 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
-        >
-          {loading ? "Creando preferencia..." : "Generar checkout"}
-        </button>
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={handleCreatePreference}
+            disabled={loading || !normalizedPlate}
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-5 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+          >
+            {loading ? "Creando preferencia..." : "Generar checkout"}
+          </button>
+        </div>
 
         {!normalizedPlate && (
           <p className="mt-2 text-xs text-amber-300">Completa la patente para habilitar el pago.</p>
         )}
 
-        {!!statusMsg && <p className="mt-4 text-sm text-slate-300">{statusMsg}</p>}
+        {!!statusMsg && <p className="mt-4 text-center text-sm text-slate-200">{statusMsg}</p>}
 
-        <button
-          type="button"
-          onClick={() => {
-            setLoading(false);
-            loadingSinceRef.current = null;
-            setLastInitPoint("");
-            setLastSandboxPoint("");
-            setQrDataUrl("");
-            setCheckoutOpen(false);
-
-            if (popupWatchRef.current) {
-              window.clearInterval(popupWatchRef.current);
-              popupWatchRef.current = null;
-            }
-
-            if (popupRef.current && !popupRef.current.closed) {
-              popupRef.current.close();
-            }
-
-            setStatusMsg("Checkout reiniciado. Puedes generar una nueva preferencia.");
-          }}
-          className="mt-3 inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
-        >
-          Reiniciar checkout
-        </button>
+        <div className="mt-3 flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(false);
+              loadingSinceRef.current = null;
+              setLastInitPoint("");
+              setLastSandboxPoint("");
+              setQrDataUrl("");
+              setStatusMsg("Checkout reiniciado. Puedes generar una nueva preferencia.");
+            }}
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
+          >
+            Reiniciar checkout
+          </button>
+        </div>
 
         {(lastSandboxPoint || lastInitPoint) && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={openCheckoutPopup}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 text-sm text-emerald-300"
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <a
+              href={hasSelectedUrl ? selectedUrl : undefined}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={!hasSelectedUrl}
+              className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm ${
+                hasSelectedUrl
+                  ? "border border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                  : "cursor-not-allowed border border-slate-700 text-slate-500"
+              }`}
             >
               <img
                 src="https://http2.mlstatic.com/storage/logos-api-admin/5c2a84d0-ccfc-11ef-b4ad-3f7be6b695b7-xl.png"
                 alt="Mercado Pago"
                 className="h-4 w-auto"
               />
-              {checkoutOpen ? "Checkout abierto" : "Pagar con Mercado Pago"}
-            </button>
-
-            <a
-              href={
-                paymentMode === "sandbox"
-                  ? lastSandboxPoint || lastInitPoint
-                  : lastInitPoint || lastSandboxPoint
-              }
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm"
-            >
-              Abrir checkout en pestana
+              Pagar con Mercado Pago
             </a>
-
-            {lastSandboxPoint && lastInitPoint && lastSandboxPoint !== lastInitPoint && (
-              <a
-                href={lastInitPoint}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-10 items-center rounded-lg border border-cyan-500/40 px-4 text-sm text-cyan-300"
-              >
-                Abrir initPoint
-              </a>
-            )}
 
             <button
               type="button"
+              disabled={!hasSelectedUrl}
               onClick={async () => {
-                const directLink =
-                  paymentMode === "sandbox"
-                    ? lastSandboxPoint || lastInitPoint
-                    : lastInitPoint || lastSandboxPoint;
-                if (!directLink) return;
+                if (!selectedUrl) return;
 
                 try {
-                  await navigator.clipboard.writeText(directLink);
+                  await navigator.clipboard.writeText(selectedUrl);
                   setStatusMsg("Link directo de Mercado Pago copiado.");
                 } catch {
                   setStatusMsg("No se pudo copiar el link directo.");
                 }
               }}
-              className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm"
+              className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm disabled:opacity-50"
             >
               Copiar link directo
             </button>
@@ -487,9 +430,9 @@ export default function CheckoutPage() {
         )}
 
         {(lastInitPoint || lastSandboxPoint) && (
-          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+          <div className="glass-panel mt-5 rounded-xl p-4 text-center">
             <p className="text-sm font-medium text-slate-200">QR de pago</p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-slate-300">
               Compartelo para pagar escaneando desde el telefono.
             </p>
 
@@ -497,18 +440,19 @@ export default function CheckoutPage() {
               <img
                 src={qrDataUrl}
                 alt="QR de pago"
-                className="mt-3 h-[220px] w-[220px] rounded-md border border-slate-800 bg-white p-2"
+                className="mx-auto mt-3 h-[220px] w-[220px] rounded-md border border-slate-800 bg-white p-2"
               />
             ) : (
               <p className="mt-3 text-xs text-amber-300">No se pudo generar el QR.</p>
             )}
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex justify-center gap-2">
               <button
                 type="button"
                 onClick={async () => {
+                  if (!selectedUrl) return;
                   try {
-                    await navigator.clipboard.writeText(lastInitPoint);
+                    await navigator.clipboard.writeText(selectedUrl);
                     setStatusMsg("Link de pago copiado al portapapeles.");
                   } catch {
                     setStatusMsg("No se pudo copiar el link.");

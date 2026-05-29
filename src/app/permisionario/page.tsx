@@ -38,12 +38,6 @@ type CashPaymentResponse = {
   expiresAt: string;
 };
 
-type PreferenceResponse = {
-  preferenceId: string;
-  initPoint?: string;
-  sandboxInitPoint?: string;
-};
-
 export default function PermisionarioPage() {
   const { sessionStatus, session } = useAuth();
   const [plate, setPlate] = useState("");
@@ -65,7 +59,6 @@ export default function PermisionarioPage() {
   const [cashZoneId, setCashZoneId] = useState("");
   const [cashAmount, setCashAmount] = useState(0);
   const [cashLoading, setCashLoading] = useState(false);
-  const [mpLinkLoading, setMpLinkLoading] = useState(false);
 
   const isAuthenticated = sessionStatus === "authenticated";
   const role = session?.user?.role;
@@ -79,9 +72,11 @@ export default function PermisionarioPage() {
       const data = (await response.json()) as ZonesResponse;
       setZones(data.zones);
       setUsedFallbackZones(Boolean(data.usedFallback));
-      if (data.zones[0]) {
-        setCashZoneId(data.zones[0].zoneId || "");
-        setCashAmount(Math.max(0, Number(data.zones[0].ratePerHour ?? 0)));
+      if (data.zones.length > 0) {
+        const randomZone = data.zones[Math.floor(Math.random() * data.zones.length)];
+        setCashZoneId(randomZone.zoneId || "");
+        setCashAmount(Math.max(0, Number(randomZone.ratePerHour ?? 0)));
+        setMessage(`Zona sugerida aleatoria: ${randomZone.name} (${randomZone.zoneId || "-"})`);
       }
     }
 
@@ -153,67 +148,6 @@ export default function PermisionarioPage() {
     await checkPlate();
   }
 
-  async function generateMercadoPagoLink(params: {
-    title: string;
-    zoneId: string | null;
-    ratePerHour: number;
-  }) {
-    const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
-    if (!normalizedPlate) {
-      setMessage("Ingresa patente para generar link directo de Mercado Pago");
-      return;
-    }
-
-    const durationMinutes = Math.max(1, cashHours) * 60;
-    const quantity = Math.max(1, cashHours);
-
-    setMpLinkLoading(true);
-    try {
-      const response = await fetch("/api/mercadopago/preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: params.title,
-          quantity,
-          unitPrice: Math.max(1, Number(params.ratePerHour || 1)),
-          plate: normalizedPlate,
-          zoneId: params.zoneId || undefined,
-          durationMinutes,
-        }),
-      });
-
-      const data = (await response.json().catch(() => ({}))) as
-        | PreferenceResponse
-        | { error?: string };
-
-      if (!response.ok || !("preferenceId" in data)) {
-        setMessage("error" in data && data.error ? data.error : "No se pudo generar link directo MP");
-        return;
-      }
-
-      const initPoint = data.initPoint || data.sandboxInitPoint || "";
-      if (!initPoint) {
-        setMessage("Mercado Pago no devolvio init_point");
-        return;
-      }
-
-      const qr = await QRCode.toDataURL(initPoint, { width: 260, margin: 1 });
-      setQrZoneId(`mp-${params.zoneId || "manual"}`);
-      setQrDataUrl(qr);
-      setLastGeneratedLink(initPoint);
-      setMessage("Link directo de Mercado Pago generado y abierto.");
-
-      const popup = window.open(initPoint, "_blank", "noopener,noreferrer");
-      if (!popup) {
-        setMessage("Link directo generado. El navegador bloqueo la apertura automatica; usa el link/QR.");
-      }
-    } catch {
-      setMessage("No se pudo generar link directo MP");
-    } finally {
-      setMpLinkLoading(false);
-    }
-  }
-
   if (sessionStatus === "loading") {
     return <PageShell>Resolviendo sesion...</PageShell>;
   }
@@ -228,7 +162,7 @@ export default function PermisionarioPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <main className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl">
+      <main className="glass-panel mx-auto w-full max-w-3xl rounded-2xl p-8">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-amber-300">Permisionario</p>
@@ -280,7 +214,7 @@ export default function PermisionarioPage() {
           </div>
         )}
 
-        <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="glass-panel mt-8 rounded-xl p-4">
           <p className="text-sm font-medium text-slate-200">Cobro en efectivo</p>
           <p className="mt-1 text-xs text-slate-400">
             Registra un pago manual por horas para habilitar la patente en el acto.
@@ -341,7 +275,7 @@ export default function PermisionarioPage() {
           </button>
         </div>
 
-        <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="glass-panel mt-8 rounded-xl p-4">
           <p className="text-sm font-medium text-slate-200">QR por zona</p>
           <p className="mt-1 text-xs text-slate-400">
             Genera un QR que abre checkout preconfigurado para una zona/cuadra.
@@ -396,20 +330,6 @@ export default function PermisionarioPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    void generateMercadoPagoLink({
-                      title: zone.name,
-                      zoneId: zone.zoneId,
-                      ratePerHour: zone.ratePerHour,
-                    });
-                  }}
-                  disabled={mpLinkLoading}
-                  className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-lime-500/40 px-2 text-xs text-lime-300 disabled:opacity-60"
-                >
-                  {mpLinkLoading ? "Generando..." : "Link directo MP"}
-                </button>
-                <button
-                  type="button"
                   onClick={async () => {
                     const baseUrl = window.location.origin;
                     const transferUrl = `${baseUrl}/transfer?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}&alias=${encodeURIComponent(transferAlias)}&cbu=${encodeURIComponent(transferCbu)}&owner=${encodeURIComponent(transferOwner)}`;
@@ -422,22 +342,7 @@ export default function PermisionarioPage() {
                 >
                   QR transferencia directa
                 </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const baseUrl = window.location.origin;
-                    const checkoutUrl = `${baseUrl}/checkout?title=${encodeURIComponent(zone.name)}&unitPrice=${zone.ratePerHour}&zoneId=${encodeURIComponent(zone.zoneId || "")}&durationMinutes=${Math.max(1, cashHours) * 60}&plate=${encodeURIComponent(plate.replace(/\s+/g, "").toUpperCase())}`;
-                    try {
-                      await navigator.clipboard.writeText(checkoutUrl);
-                      setMessage("Link de cobro copiado");
-                    } catch {
-                      setMessage("No se pudo copiar link de cobro");
-                    }
-                  }}
-                  className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
-                >
-                  Copiar link
-                </button>
+                
               </li>
             ))}
             {zones.length === 0 && (
@@ -484,37 +389,25 @@ export default function PermisionarioPage() {
               >
                 Generar QR manual (transferencia)
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void generateMercadoPagoLink({
-                    title: manualZoneName || "Cobro rapido",
-                    zoneId: manualZoneId || "MANUAL",
-                    ratePerHour: manualRatePerHour,
-                  });
-                }}
-                disabled={mpLinkLoading}
-                className="mt-2 ml-2 inline-flex h-8 items-center rounded-md border border-lime-500/40 px-2 text-xs text-lime-300 disabled:opacity-60"
-              >
-                {mpLinkLoading ? "Generando..." : "Link directo MP"}
-              </button>
             </div>
           )}
 
           {qrDataUrl && (
             <div className="mt-4 rounded-md border border-slate-800 p-3">
-              <p className="text-xs text-slate-300">QR generado {qrZoneId ? `(zona ${qrZoneId})` : ""}</p>
-              <img src={qrDataUrl} alt="QR de zona" className="mt-2 h-[220px] w-[220px] rounded-md bg-white p-2" />
+              <p className="text-center text-xs text-slate-300">QR generado {qrZoneId ? `(zona ${qrZoneId})` : ""}</p>
+              <img src={qrDataUrl} alt="QR de zona" className="mx-auto mt-2 h-[220px] w-[220px] rounded-md bg-white p-2" />
               {lastGeneratedLink && (
                 <p className="mt-2 break-all text-[11px] text-slate-400">{lastGeneratedLink}</p>
               )}
-              <a
-                href={qrDataUrl}
-                download="zona-qr.png"
-                className="mt-2 inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
-              >
-                Descargar QR
-              </a>
+              <div className="mt-2 flex justify-center">
+                <a
+                  href={qrDataUrl}
+                  download="zona-qr.png"
+                  className="inline-flex h-8 items-center rounded-md border border-slate-700 px-2 text-xs"
+                >
+                  Descargar QR
+                </a>
+              </div>
             </div>
           )}
         </div>
