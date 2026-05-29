@@ -168,42 +168,50 @@ export default function PermisionarioPage() {
     const quantity = Math.max(1, cashHours);
 
     setMpLinkLoading(true);
-    const response = await fetch("/api/mercadopago/preference", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: params.title,
-        quantity,
-        unitPrice: Math.max(1, Number(params.ratePerHour || 1)),
-        plate: normalizedPlate,
-        zoneId: params.zoneId || undefined,
-        durationMinutes,
-      }),
-    });
+    try {
+      const response = await fetch("/api/mercadopago/preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: params.title,
+          quantity,
+          unitPrice: Math.max(1, Number(params.ratePerHour || 1)),
+          plate: normalizedPlate,
+          zoneId: params.zoneId || undefined,
+          durationMinutes,
+        }),
+      });
 
-    const data = (await response.json().catch(() => ({}))) as
-      | PreferenceResponse
-      | { error?: string };
+      const data = (await response.json().catch(() => ({}))) as
+        | PreferenceResponse
+        | { error?: string };
 
-    if (!response.ok || !("preferenceId" in data)) {
-      setMessage("error" in data && data.error ? data.error : "No se pudo generar link directo MP");
+      if (!response.ok || !("preferenceId" in data)) {
+        setMessage("error" in data && data.error ? data.error : "No se pudo generar link directo MP");
+        return;
+      }
+
+      const initPoint = data.sandboxInitPoint || data.initPoint || "";
+      if (!initPoint) {
+        setMessage("Mercado Pago no devolvio init_point");
+        return;
+      }
+
+      const qr = await QRCode.toDataURL(initPoint, { width: 260, margin: 1 });
+      setQrZoneId(`mp-${params.zoneId || "manual"}`);
+      setQrDataUrl(qr);
+      setLastGeneratedLink(initPoint);
+      setMessage("Link directo de Mercado Pago generado y abierto.");
+
+      const popup = window.open(initPoint, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        setMessage("Link directo generado. El navegador bloqueo la apertura automatica; usa el link/QR.");
+      }
+    } catch {
+      setMessage("No se pudo generar link directo MP");
+    } finally {
       setMpLinkLoading(false);
-      return;
     }
-
-    const initPoint = data.sandboxInitPoint || data.initPoint || "";
-    if (!initPoint) {
-      setMessage("Mercado Pago no devolvio init_point");
-      setMpLinkLoading(false);
-      return;
-    }
-
-    const qr = await QRCode.toDataURL(initPoint, { width: 260, margin: 1 });
-    setQrZoneId(`mp-${params.zoneId || "manual"}`);
-    setQrDataUrl(qr);
-    setLastGeneratedLink(initPoint);
-    setMessage("Link directo de Mercado Pago generado");
-    setMpLinkLoading(false);
   }
 
   if (sessionStatus === "loading") {

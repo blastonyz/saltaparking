@@ -173,6 +173,7 @@ export default function UsuarioPage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!mapAccordionOpen) return;
     if (!mapReady || !mapContainerRef.current || !window.google) return;
     if (mapsScriptError) return;
     if (mapRef.current) return;
@@ -205,7 +206,23 @@ export default function UsuarioPage() {
     if (position) {
       void fetchSpaces(position.lat, position.lng);
     }
-  }, [mapReady, position, mapsScriptError]);
+  }, [mapReady, position, mapsScriptError, mapAccordionOpen]);
+
+  useEffect(() => {
+    if (!mapAccordionOpen || !mapRef.current || !window.google) return;
+
+    // When opening accordion, force map to recalculate size to avoid black canvas.
+    setTimeout(() => {
+      if (!mapRef.current || !window.google) return;
+      (window.google.maps.event as unknown as { trigger: (target: unknown, eventName: string) => void }).trigger(
+        mapRef.current,
+        "resize"
+      );
+
+      const center = position || { lat: -24.7829, lng: -65.4232 };
+      mapRef.current.setCenter(center);
+    }, 40);
+  }, [mapAccordionOpen, position]);
 
   useEffect(() => {
     if (!mapRef.current || !position) return;

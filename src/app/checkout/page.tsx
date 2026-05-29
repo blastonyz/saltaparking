@@ -1,6 +1,5 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useAuth } from "@/app/context/auth-context";
@@ -10,17 +9,6 @@ type PreferenceResponse = {
   initPoint?: string;
   sandboxInitPoint?: string;
 };
-
-declare global {
-  interface Window {
-    MercadoPago?: new (publicKey: string, options?: { locale?: string }) => {
-      checkout: (params: {
-        preference: { id: string };
-        render: { container: string; label: string };
-      }) => void;
-    };
-  }
-}
 
 export default function CheckoutPage() {
   const { session } = useAuth();
@@ -35,17 +23,11 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
   const [lastSandboxPoint, setLastSandboxPoint] = useState("");
-  const [lastPreferenceId, setLastPreferenceId] = useState("");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [mpSdkReady, setMpSdkReady] = useState(false);
-  const [walletError, setWalletError] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
   const popupRef = useRef<Window | null>(null);
   const popupWatchRef = useRef<number | null>(null);
-  const walletCheckRef = useRef<number | null>(null);
-
-  const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? process.env.MP_PUBLIC_KEY ?? "";
 
   const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
 
@@ -141,10 +123,8 @@ export default function CheckoutPage() {
       const sandboxPoint = data.sandboxInitPoint || "";
       const prodPoint = data.initPoint || "";
 
-      setLastPreferenceId(data.preferenceId || "");
       setLastSandboxPoint(sandboxPoint);
       setLastInitPoint(sandboxPoint || prodPoint);
-      setWalletError("");
       setStatusMsg(
         sandboxPoint
           ? "Preferencia creada. Sandbox listo para abrir checkout."
@@ -167,56 +147,8 @@ export default function CheckoutPage() {
       if (popupWatchRef.current) {
         window.clearInterval(popupWatchRef.current);
       }
-
-      if (walletCheckRef.current) {
-        window.clearTimeout(walletCheckRef.current);
-      }
     };
   }, []);
-
-  function clearWalletContainer() {
-    const node = document.getElementById("wallet_container");
-    if (node) {
-      node.innerHTML = "";
-    }
-  }
-
-  useEffect(() => {
-    if (!mpSdkReady || !lastPreferenceId || !publicKey) return;
-    if (!window.MercadoPago) {
-      setWalletError("SDK de Mercado Pago no disponible en este navegador.");
-      return;
-    }
-
-    clearWalletContainer();
-
-    try {
-      const mp = new window.MercadoPago(publicKey, { locale: "es-AR" });
-      mp.checkout({
-        preference: { id: lastPreferenceId },
-        render: {
-          container: "#wallet_container",
-          label: "Pagar con Mercado Pago",
-        },
-      });
-
-      if (walletCheckRef.current) {
-        window.clearTimeout(walletCheckRef.current);
-      }
-
-      walletCheckRef.current = window.setTimeout(() => {
-        const node = document.getElementById("wallet_container");
-        const hasButton = !!node && node.childElementCount > 0;
-        if (!hasButton) {
-          setWalletError(
-            "No se pudo renderizar el boton embebido (CSP o bloqueo del navegador). Usa ventana/pestana."
-          );
-        }
-      }, 900);
-    } catch {
-      setWalletError("No se pudo inicializar el boton de Mercado Pago embebido.");
-    }
-  }, [mpSdkReady, lastPreferenceId, publicKey]);
 
   function openCheckoutPopup() {
     const targetUrl = lastSandboxPoint || lastInitPoint;
@@ -324,13 +256,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <Script
-        src="https://sdk.mercadopago.com/js/v2"
-        strategy="afterInteractive"
-        onLoad={() => setMpSdkReady(true)}
-        onError={() => setWalletError("No se pudo cargar SDK de Mercado Pago")}
-      />
-
       <main className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Checkout</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Mercado Pago - Pruebas</h1>
@@ -436,11 +361,8 @@ export default function CheckoutPage() {
             loadingSinceRef.current = null;
             setLastInitPoint("");
             setLastSandboxPoint("");
-            setLastPreferenceId("");
             setQrDataUrl("");
             setCheckoutOpen(false);
-            setWalletError("");
-            clearWalletContainer();
 
             if (popupWatchRef.current) {
               window.clearInterval(popupWatchRef.current);
@@ -463,9 +385,14 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={openCheckoutPopup}
-              className="inline-flex h-10 items-center rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 text-sm text-emerald-300"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 text-sm text-emerald-300"
             >
-              {checkoutOpen ? "Checkout abierto" : "Abrir checkout en ventana"}
+              <img
+                src="https://http2.mlstatic.com/storage/logos-api-admin/5c2a84d0-ccfc-11ef-b4ad-3f7be6b695b7-xl.png"
+                alt="Mercado Pago"
+                className="h-4 w-auto"
+              />
+              {checkoutOpen ? "Checkout abierto" : "Pagar con Mercado Pago"}
             </button>
 
             <a
@@ -487,17 +414,24 @@ export default function CheckoutPage() {
                 Abrir initPoint
               </a>
             )}
-          </div>
-        )}
 
-        {lastPreferenceId && (
-          <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
-            <p className="text-sm font-medium text-slate-200">Boton embebido de Mercado Pago</p>
-            <p className="mt-1 text-xs text-slate-400">
-              Puedes pagar directo aqui. Si no aparece, usa ventana o pestana.
-            </p>
-            <div id="wallet_container" className="mt-3 min-h-10" />
-            {!!walletError && <p className="mt-2 text-xs text-amber-300">{walletError}</p>}
+            <button
+              type="button"
+              onClick={async () => {
+                const directLink = lastSandboxPoint || lastInitPoint;
+                if (!directLink) return;
+
+                try {
+                  await navigator.clipboard.writeText(directLink);
+                  setStatusMsg("Link directo de Mercado Pago copiado.");
+                } catch {
+                  setStatusMsg("No se pudo copiar el link directo.");
+                }
+              }}
+              className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm"
+            >
+              Copiar link directo
+            </button>
           </div>
         )}
 
