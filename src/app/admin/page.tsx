@@ -82,15 +82,14 @@ export default function AdminPage() {
             <p className="text-base font-semibold text-slate-100">Espacios</p>
             <p className="mt-1 text-sm text-slate-300">Cargar y seedear parking_spaces para el mapa.</p>
           </Link>
-        </div>
 
-        <div className="mx-auto mt-4 grid w-full max-w-xl">
           <Link
             href="/"
             className="rounded-xl border border-white/25 bg-gradient-to-br from-slate-300/15 via-slate-400/10 to-slate-500/15 p-4 text-center transition hover:border-slate-400/60 hover:bg-slate-500/10"
           >
             <p className="text-base font-semibold text-slate-100">Volver al inicio</p>
           </Link>
+        </div>
         </div>
       </main>
     </div>
