@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
 
 type MapsMap = {
@@ -81,9 +81,9 @@ export default function AdminEspaciosPage() {
   const [zoneId, setZoneId] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [availableSpots, setAvailableSpots] = useState("0");
-  const [totalSpots, setTotalSpots] = useState("0");
-  const [ratePerHour, setRatePerHour] = useState("0");
+  const [availableSpots, setAvailableSpots] = useState("5");
+  const [totalSpots, setTotalSpots] = useState("10");
+  const [ratePerHour, setRatePerHour] = useState("900");
   const [assignedPermisionarioEmail, setAssignedPermisionarioEmail] = useState("");
   const [blockPolygonText, setBlockPolygonText] = useState("");
   const [segmentFrom, setSegmentFrom] = useState("");
@@ -98,6 +98,7 @@ export default function AdminEspaciosPage() {
 
   const mapContainerId = "admin-spaces-map";
   const [mapInstance, setMapInstance] = useState<MapsMap | null>(null);
+  const captureTargetRef = useRef<"from" | "to">("from");
 
   function parseBlockPolygon(text: string): Array<{ lat: number; lng: number }> {
     const normalized = text.trim();
@@ -210,6 +211,10 @@ export default function AdminEspaciosPage() {
   }
 
   useEffect(() => {
+    captureTargetRef.current = captureTarget;
+  }, [captureTarget]);
+
+  useEffect(() => {
     if (sessionStatus === "authenticated" && session?.user?.role === "admin") {
       void fetchSpaces();
     }
@@ -274,7 +279,7 @@ export default function AdminEspaciosPage() {
       if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
 
       const point = { lat: clickLat as number, lng: clickLng as number };
-      if (captureTarget === "from") {
+      if (captureTargetRef.current === "from") {
         from.setPosition?.(point);
         setSegmentFrom(formatLatLngPoint(point));
       } else {
@@ -314,6 +319,37 @@ export default function AdminEspaciosPage() {
   async function createSpace() {
     setMessage("");
     const blockPolygon = parseBlockPolygon(blockPolygonText);
+    const latNumber = Number(lat);
+    const lngNumber = Number(lng);
+    const availableNumber = Number(availableSpots);
+    const totalNumber = Number(totalSpots);
+    const rateNumber = Number(ratePerHour);
+
+    if (!name.trim() || !address.trim()) {
+      setMessage("Nombre y direccion son obligatorios");
+      return;
+    }
+
+    if (!Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
+      setMessage("Lat/Lng invalidos");
+      return;
+    }
+
+    if (!Number.isFinite(totalNumber) || totalNumber <= 0) {
+      setMessage("Totales debe ser mayor a 0");
+      return;
+    }
+
+    if (!Number.isFinite(availableNumber) || availableNumber < 0 || availableNumber > totalNumber) {
+      setMessage("Disponibles debe estar entre 0 y Totales");
+      return;
+    }
+
+    if (!Number.isFinite(rateNumber) || rateNumber < 0) {
+      setMessage("Tarifa invalida");
+      return;
+    }
+
     if (blockPolygonText.trim() && blockPolygon.length < 3) {
       setMessage("Poligono invalido: usa formato lat,lng; lat,lng; lat,lng");
       return;
@@ -327,11 +363,11 @@ export default function AdminEspaciosPage() {
         name,
         address,
         zoneId,
-        lat: Number(lat),
-        lng: Number(lng),
-        availableSpots: Number(availableSpots),
-        totalSpots: Number(totalSpots),
-        ratePerHour: Number(ratePerHour),
+        lat: latNumber,
+        lng: lngNumber,
+        availableSpots: availableNumber,
+        totalSpots: totalNumber,
+        ratePerHour: rateNumber,
         assignedPermisionarioEmail,
         blockPolygon,
       }),
@@ -349,9 +385,9 @@ export default function AdminEspaciosPage() {
     setZoneId("");
     setLat("");
     setLng("");
-    setAvailableSpots("0");
-    setTotalSpots("0");
-    setRatePerHour("0");
+    setAvailableSpots("5");
+    setTotalSpots("10");
+    setRatePerHour("900");
     setAssignedPermisionarioEmail("");
     setBlockPolygonText("");
     await fetchSpaces();
