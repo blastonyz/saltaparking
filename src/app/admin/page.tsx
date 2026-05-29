@@ -17,7 +17,7 @@ export default function AdminPage() {
   if (sessionStatus !== "authenticated") {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-        <main className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl backdrop-blur">
+        <main className="w-full max-w-xl rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-xl">
           <p className="text-sm text-slate-300">Necesitas iniciar sesion para acceder al panel admin.</p>
           <Link
             href="/"
@@ -33,7 +33,7 @@ export default function AdminPage() {
   if (session?.user?.role !== "admin") {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-        <main className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl backdrop-blur">
+        <main className="w-full max-w-xl rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-xl">
           <p className="text-sm text-amber-300">No tienes permisos de administrador.</p>
           <Link
             href="/"
@@ -48,14 +48,14 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6 py-12">
-      <main className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl backdrop-blur">
+      <main className="w-full max-w-2xl rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-xl">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Admin</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Panel de administracion</h1>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <Link
             href="/admin/permisionarios"
-            className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-amber-500/60 hover:bg-amber-500/5"
+            className="rounded-xl border border-white/20 bg-white/5 p-4 transition hover:border-amber-500/60 hover:bg-amber-500/10"
           >
             <p className="text-base font-semibold text-slate-100">Permisionarios</p>
             <p className="mt-1 text-sm text-slate-400">Revisar pendientes y aprobar solicitudes.</p>
@@ -63,7 +63,7 @@ export default function AdminPage() {
 
           <Link
             href="/admin/usuarios"
-            className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-emerald-500/60 hover:bg-emerald-500/5"
+            className="rounded-xl border border-white/20 bg-white/5 p-4 transition hover:border-emerald-500/60 hover:bg-emerald-500/10"
           >
             <p className="text-base font-semibold text-slate-100">Usuarios</p>
             <p className="mt-1 text-sm text-slate-400">Ver todos los usuarios, roles y estado.</p>
@@ -71,7 +71,7 @@ export default function AdminPage() {
 
           <Link
             href="/admin/espacios"
-            className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-cyan-500/60 hover:bg-cyan-500/5"
+            className="rounded-xl border border-white/20 bg-white/5 p-4 transition hover:border-cyan-500/60 hover:bg-cyan-500/10"
           >
             <p className="text-base font-semibold text-slate-100">Espacios</p>
             <p className="mt-1 text-sm text-slate-400">Cargar y seedear parking_spaces para el mapa.</p>

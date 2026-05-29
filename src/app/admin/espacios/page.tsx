@@ -549,7 +549,7 @@ export default function AdminEspaciosPage() {
         />
       )}
 
-      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
+      <main className="mx-auto w-full max-w-6xl rounded-2xl border border-white/20 bg-white/10 p-6 shadow-xl backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Admin</p>
@@ -581,9 +581,9 @@ export default function AdminEspaciosPage() {
 
         {!!message && <p className="mt-3 text-sm text-cyan-300">{message}</p>}
 
-        <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4 backdrop-blur">
           <p className="text-sm font-medium text-slate-200">Nuevo espacio</p>
-          <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+          <div className="mt-3 rounded-lg border border-white/20 bg-white/5 p-3">
             <p className="text-xs text-slate-300">Captura en mapa (click para Desde/Hasta)</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button
@@ -609,13 +609,13 @@ export default function AdminEspaciosPage() {
                 Capturar Hasta
               </button>
             </div>
-            <div id={mapContainerId} className="mt-3 h-64 rounded-lg border border-slate-800 bg-slate-950" />
+            <div id={mapContainerId} className="mt-3 h-64 rounded-lg border border-white/20 bg-slate-950/60" />
             <p className="mt-2 text-[11px] text-yellow-300">
               Previsualizacion actual: amarillo. Zonas guardadas: colores varios.
             </p>
             {mapsError && <p className="mt-2 text-xs text-amber-300">{mapsError}</p>}
           </div>
-          <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+          <div className="mt-3 rounded-lg border border-white/20 bg-white/5 p-3">
             <p className="text-xs text-slate-300">Generador rapido por tramo de calle</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-4">
               <input
@@ -675,7 +675,7 @@ export default function AdminEspaciosPage() {
           </button>
         </div>
 
-        <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="mt-5 rounded-xl border border-white/20 bg-white/5 p-4 backdrop-blur">
           <p className="text-sm font-medium text-slate-200">parking_spaces ({spaces.length})</p>
           {loading && <p className="mt-2 text-sm text-slate-400">Cargando...</p>}
           <div className="mt-3 overflow-x-auto">

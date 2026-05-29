@@ -1,20 +1,8 @@
 "use client";
 
-import Script from "next/script";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useAuth } from "@/app/context/auth-context";
-
-declare global {
-  interface Window {
-    MercadoPago?: new (publicKey: string, options?: { locale?: string }) => {
-      checkout: (params: {
-        preference: { id: string };
-        render: { container: string; label: string };
-      }) => void;
-    };
-  }
-}
 
 type PreferenceResponse = {
   preferenceId: string;
@@ -34,8 +22,11 @@ export default function CheckoutPage() {
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastInitPoint, setLastInitPoint] = useState("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const loadingSinceRef = useRef<number | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const popupWatchRef = useRef<number | null>(null);
 
   const normalizedPlate = plate.replace(/\s+/g, "").toUpperCase();
 
@@ -76,18 +67,6 @@ export default function CheckoutPage() {
       setStatusMsg("Pago enviado. Estamos confirmando.");
     }
   }, []);
-
-  function clearWalletContainer() {
-    const container = document.getElementById("wallet_container");
-    if (container) {
-      container.innerHTML = "";
-    }
-  }
-
-  const publicKey = useMemo(
-    () => process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? process.env.MP_PUBLIC_KEY ?? "",
-    []
-  );
 
   async function handleCreatePreference() {
     if (!normalizedPlate) {
@@ -140,29 +119,8 @@ export default function CheckoutPage() {
         throw new Error("error" in data ? data.error : "No se pudo crear la preferencia");
       }
 
-      if (!publicKey) {
-        throw new Error("Falta NEXT_PUBLIC_MP_PUBLIC_KEY en .env.local");
-      }
-
-      const sdk = window.MercadoPago;
-      if (!sdk) {
-        throw new Error("SDK de Mercado Pago no cargado");
-      }
-
-      const mp = new sdk(publicKey, { locale: "es-AR" });
-
-      clearWalletContainer();
-
-      mp.checkout({
-        preference: { id: data.preferenceId },
-        render: {
-          container: "#wallet_container",
-          label: "Pagar ahora",
-        },
-      });
-
       setLastInitPoint(data.sandboxInitPoint || data.initPoint || "");
-      setStatusMsg("Preferencia creada. Ya puedes pagar con el boton de Mercado Pago.");
+      setStatusMsg("Preferencia creada. Abre el checkout para completar el pago.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setStatusMsg("La solicitud tardó demasiado. Intenta nuevamente.");
@@ -173,6 +131,50 @@ export default function CheckoutPage() {
       setLoading(false);
       loadingSinceRef.current = null;
     }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (popupWatchRef.current) {
+        window.clearInterval(popupWatchRef.current);
+      }
+    };
+  }, []);
+
+  function openCheckoutPopup() {
+    if (!lastInitPoint) {
+      setStatusMsg("Primero genera una preferencia.");
+      return;
+    }
+
+    if (popupWatchRef.current) {
+      window.clearInterval(popupWatchRef.current);
+      popupWatchRef.current = null;
+    }
+
+    const popup = window.open(lastInitPoint, "mp_checkout", "width=520,height=740,noopener,noreferrer");
+    if (!popup) {
+      setStatusMsg("No se pudo abrir la ventana. Habilita popups o usa 'Abrir checkout'.");
+      return;
+    }
+
+    popupRef.current = popup;
+    setCheckoutOpen(true);
+    setStatusMsg("Checkout abierto. Si lo cierras, puedes reintentar sin recargar.");
+
+    popupWatchRef.current = window.setInterval(() => {
+      if (!popupRef.current || popupRef.current.closed) {
+        setCheckoutOpen(false);
+        setLoading(false);
+        loadingSinceRef.current = null;
+        setStatusMsg("Checkout cerrado. Si cancelaste el pago, puedes intentarlo nuevamente.");
+
+        if (popupWatchRef.current) {
+          window.clearInterval(popupWatchRef.current);
+          popupWatchRef.current = null;
+        }
+      }
+    }, 600);
   }
 
   useEffect(() => {
@@ -205,7 +207,6 @@ export default function CheckoutPage() {
       if (staleForMs > 20000) {
         setLoading(false);
         loadingSinceRef.current = null;
-        clearWalletContainer();
         setStatusMsg("Se recuperó el estado de carga. Puedes intentar nuevamente.");
       }
     }, 1500);
@@ -221,7 +222,6 @@ export default function CheckoutPage() {
       if (staleForMs > 5000) {
         setLoading(false);
         loadingSinceRef.current = null;
-        clearWalletContainer();
         setStatusMsg("Volviste al checkout. Si cancelaste, puedes reintentar el pago.");
       }
     }
@@ -243,8 +243,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <Script src="https://sdk.mercadopago.com/js/v2" strategy="afterInteractive" />
-
       <main className="mx-auto w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Checkout</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Mercado Pago - Pruebas</h1>
@@ -348,9 +346,19 @@ export default function CheckoutPage() {
           onClick={() => {
             setLoading(false);
             loadingSinceRef.current = null;
-            clearWalletContainer();
             setLastInitPoint("");
             setQrDataUrl("");
+            setCheckoutOpen(false);
+
+            if (popupWatchRef.current) {
+              window.clearInterval(popupWatchRef.current);
+              popupWatchRef.current = null;
+            }
+
+            if (popupRef.current && !popupRef.current.closed) {
+              popupRef.current.close();
+            }
+
             setStatusMsg("Checkout reiniciado. Puedes generar una nueva preferencia.");
           }}
           className="mt-3 inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm text-slate-200 transition hover:bg-slate-800"
@@ -358,7 +366,26 @@ export default function CheckoutPage() {
           Reiniciar checkout
         </button>
 
-        <div id="wallet_container" className="mt-6" />
+        {lastInitPoint && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={openCheckoutPopup}
+              className="inline-flex h-10 items-center rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 text-sm text-emerald-300"
+            >
+              {checkoutOpen ? "Checkout abierto" : "Abrir checkout en ventana"}
+            </button>
+
+            <a
+              href={lastInitPoint}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center rounded-lg border border-slate-700 px-4 text-sm"
+            >
+              Abrir checkout en pestana
+            </a>
+          </div>
+        )}
 
         {lastInitPoint && (
           <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
@@ -378,15 +405,6 @@ export default function CheckoutPage() {
             )}
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <a
-                href={lastInitPoint}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-9 items-center rounded-md border border-emerald-500/40 px-3 text-xs text-emerald-300"
-              >
-                Abrir checkout
-              </a>
-
               <button
                 type="button"
                 onClick={async () => {
