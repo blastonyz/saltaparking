@@ -46,6 +46,7 @@ type GoogleMapsApi = {
 declare global {
   interface Window {
     google?: GoogleMapsApi;
+    gm_authFailure?: () => void;
   }
 }
 
@@ -118,6 +119,7 @@ export default function UsuarioPage() {
 
   useEffect(() => {
     if (!mapReady || !mapContainerRef.current || !window.google) return;
+    if (mapsScriptError) return;
 
     const center = position || { lat: -24.7829, lng: -65.4232 };
     mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
@@ -130,17 +132,34 @@ export default function UsuarioPage() {
     if (position) {
       void fetchSpaces(position.lat, position.lng);
     }
-  }, [mapReady, position]);
+  }, [mapReady, position, mapsScriptError]);
+
+  useEffect(() => {
+    window.gm_authFailure = () => {
+      setMapsScriptError(
+        "Google Maps API key no autorizada para este dominio (RefererNotAllowedMapError)."
+      );
+    };
+
+    return () => {
+      delete window.gm_authFailure;
+    };
+  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation || !isAuthenticated) return;
 
     navigator.geolocation.getCurrentPosition(
       (geo) => {
+        const nextPosition = {
+          lat: geo.coords.latitude,
+          lng: geo.coords.longitude,
+        };
         setPosition({
           lat: geo.coords.latitude,
           lng: geo.coords.longitude,
         });
+        void fetchSpaces(nextPosition.lat, nextPosition.lng);
         setStatusMsg("");
       },
       (error) => {
@@ -304,7 +323,16 @@ export default function UsuarioPage() {
         )}
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
-          <div ref={mapContainerRef} className="h-[480px] rounded-xl border border-slate-800 bg-slate-950" />
+          <div
+            ref={mapContainerRef}
+            className="h-[480px] rounded-xl border border-slate-800 bg-slate-950"
+          >
+            {mapsScriptError && (
+              <div className="h-full w-full flex items-center justify-center p-6 text-center text-sm text-rose-300">
+                {mapsScriptError}
+              </div>
+            )}
+          </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
             <p className="text-sm font-medium text-slate-200">Espacios disponibles ({spaces.length})</p>
