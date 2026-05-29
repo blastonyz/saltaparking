@@ -25,6 +25,8 @@ type ParkingPaymentDoc = {
   paidAt?: Date | null;
   paymentMethod?: "mercadopago" | "cash";
   createdByEmail?: string | null;
+  paidHours?: number;
+  collectedAt?: Date;
 };
 
 export const dynamic = "force-dynamic";
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
 
   const now = new Date();
   const externalReference = `cash-${Date.now()}-${plate}`;
+  const paidHours = Number((durationMinutes / 60).toFixed(2));
 
   const parkingPayments = await getMongoCollection<ParkingPaymentDoc>("parking_payments");
   await parkingPayments.insertOne({
@@ -80,6 +83,8 @@ export async function POST(req: Request) {
     paymentId: externalReference,
     paymentMethod: "cash",
     createdByEmail: email,
+    paidHours,
+    collectedAt: now,
   });
 
   return NextResponse.json(
@@ -90,6 +95,8 @@ export async function POST(req: Request) {
       durationMinutes,
       amount,
       method: "cash",
+      paidHours,
+      collectedAt: now,
       createdAt: now,
       expiresAt: new Date(now.getTime() + durationMinutes * 60 * 1000),
     },

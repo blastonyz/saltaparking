@@ -52,6 +52,7 @@ export default function CheckoutPage() {
     const nextZone = params.get("zoneId");
     const nextDuration = params.get("durationMinutes");
     const nextPlate = params.get("plate");
+    const status = params.get("status");
 
     if (nextTitle) setTitle(nextTitle);
     if (nextRate && Number.isFinite(Number(nextRate))) setUnitPrice(Number(nextRate));
@@ -60,6 +61,20 @@ export default function CheckoutPage() {
       setDurationMinutes(Math.max(1, Number(nextDuration)));
     }
     if (nextPlate) setPlate(nextPlate.toUpperCase());
+
+    if (status === "failure") {
+      setLoading(false);
+      loadingSinceRef.current = null;
+      setStatusMsg("Pago cancelado o rechazado. Puedes reintentar.");
+    } else if (status === "pending") {
+      setLoading(false);
+      loadingSinceRef.current = null;
+      setStatusMsg("Pago pendiente de confirmacion.");
+    } else if (status === "success") {
+      setLoading(false);
+      loadingSinceRef.current = null;
+      setStatusMsg("Pago enviado. Estamos confirmando.");
+    }
   }, []);
 
   function clearWalletContainer() {

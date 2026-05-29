@@ -22,6 +22,13 @@ type CreateSpaceBody = {
   blockPolygon?: Array<{ lat: number; lng: number }>;
 };
 
+type ParkingPaymentDoc = {
+  plate?: string;
+  zoneId?: string | null;
+  status?: "pending" | "approved" | "rejected";
+  expiresAt?: Date;
+};
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -34,8 +41,76 @@ export async function GET() {
   const collection = await getMongoCollection<ParkingSpaceDoc>("parking_spaces");
   const spaces = await collection.find({}).sort({ zoneId: 1, name: 1 }).toArray();
 
+  const now = new Date();
+  const payments = await getMongoCollection<ParkingPaymentDoc>("parking_payments");
+  const activeByZoneRows = await payments
+    .aggregate<{
+      _id: { zoneId: string; plate: string };
+    }>([
+      {
+        $match: {
+          status: "approved",
+          expiresAt: { $gt: now },
+          zoneId: { $type: "string" },
+          plate: { $type: "string" },
+        },
+      },
+      {
+        $project: {
+          zoneId: {
+            $toUpper: {
+              $trim: {
+                input: "$zoneId",
+              },
+            },
+          },
+          plate: {
+            $toUpper: {
+              $trim: {
+                input: "$plate",
+              },
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          zoneId: { $ne: "" },
+          plate: { $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            zoneId: "$zoneId",
+            plate: "$plate",
+          },
+        },
+      },
+    ])
+    .toArray();
+
+  const activeCarsByZone = new Map<string, number>();
+  for (const row of activeByZoneRows) {
+    const zoneKey = row._id.zoneId;
+    activeCarsByZone.set(zoneKey, (activeCarsByZone.get(zoneKey) || 0) + 1);
+  }
+
+  const spacesWithMetrics = spaces.map((space) => {
+    const zoneKey = (space.zoneId || "").trim().toUpperCase();
+    return {
+      ...space,
+      activeCars: zoneKey ? activeCarsByZone.get(zoneKey) || 0 : 0,
+    };
+  });
+
   return NextResponse.json(
-    { spaces },
+    {
+      spaces: spacesWithMetrics,
+      metrics: {
+        totalActiveCars: spacesWithMetrics.reduce((acc, item) => acc + Number(item.activeCars || 0), 0),
+      },
+    },
     {
       headers: {
         "Cache-Control": "no-store",

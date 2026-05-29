@@ -109,6 +109,18 @@ type GeocodeResponse = {
   lng: number;
 };
 
+type ActivePaymentResponse = {
+  hasActivePayment: boolean;
+  plate?: string;
+  zoneId?: string | null;
+  amount?: number | null;
+  paymentMethod?: string;
+  expiresAt?: string | null;
+  remainingMinutes?: number;
+  remainingHours?: number;
+  reason?: string;
+};
+
 export default function UsuarioPage() {
   const { sessionStatus, session } = useAuth();
   const [mapsKey, setMapsKey] = useState("");
@@ -121,6 +133,7 @@ export default function UsuarioPage() {
   const [mapsScriptError, setMapsScriptError] = useState<string>("");
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const [selectionLock, setSelectionLock] = useState(false);
+  const [activePayment, setActivePayment] = useState<ActivePaymentResponse | null>(null);
 
   const mapRef = useRef<MapsMap | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -255,6 +268,19 @@ export default function UsuarioPage() {
       { enableHighAccuracy: true, timeout: 8000 }
     );
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || role !== "usuario") return;
+
+    async function loadActivePayment() {
+      const response = await fetch("/api/parking/active-payment", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = (await response.json()) as ActivePaymentResponse;
+      setActivePayment(data);
+    }
+
+    void loadActivePayment();
+  }, [isAuthenticated, role]);
 
   const canViewPage = useMemo(() => {
     return role === "usuario" || role === "admin";
@@ -507,6 +533,21 @@ export default function UsuarioPage() {
       )}
 
       <main className="mx-auto w-full max-w-6xl rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
+        {activePayment?.hasActivePayment && (
+          <div className="mb-4 rounded-xl border border-emerald-600/40 bg-emerald-950/20 p-3 text-sm">
+            <p className="text-emerald-300">Tienes horas compradas activas</p>
+            <p className="mt-1 text-slate-200">
+              Patente {activePayment.plate} - {activePayment.remainingHours} h restantes
+              {activePayment.zoneId ? ` (zona ${activePayment.zoneId})` : ""}
+            </p>
+            {activePayment.expiresAt && (
+              <p className="mt-1 text-xs text-slate-300">
+                Vigente hasta {new Date(activePayment.expiresAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Usuario</p>

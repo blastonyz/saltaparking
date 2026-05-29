@@ -80,6 +80,7 @@ type SpaceRow = {
   zoneId: string | null;
   assignedPermisionarioEmail?: string | null;
   blockPolygon?: Array<{ lat: number; lng: number }>;
+  activeCars?: number;
   updatedAt: string;
 };
 
@@ -687,6 +688,7 @@ export default function AdminEspaciosPage() {
                   <th className="px-2 py-1 text-left">Permisionario</th>
                   <th className="px-2 py-1 text-left">Coords</th>
                   <th className="px-2 py-1 text-left">Disponibles</th>
+                  <th className="px-2 py-1 text-left">Autos con horas</th>
                   <th className="px-2 py-1 text-left">Tarifa</th>
                 </tr>
               </thead>
@@ -699,12 +701,13 @@ export default function AdminEspaciosPage() {
                     <td className="px-2 py-1">{row.assignedPermisionarioEmail || "-"}</td>
                     <td className="px-2 py-1">{row.lat.toFixed(5)}, {row.lng.toFixed(5)}</td>
                     <td className="px-2 py-1">{row.availableSpots}/{row.totalSpots}</td>
+                    <td className="px-2 py-1">{row.activeCars || 0}</td>
                     <td className="px-2 py-1">${row.ratePerHour}</td>
                   </tr>
                 ))}
                 {!loading && spaces.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-2 py-3 text-center text-slate-400">No hay espacios cargados.</td>
+                    <td colSpan={8} className="px-2 py-3 text-center text-slate-400">No hay espacios cargados.</td>
                   </tr>
                 )}
               </tbody>
