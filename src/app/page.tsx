@@ -73,32 +73,34 @@ export default function Home() {
         <h1 className="mt-4 text-center text-4xl font-semibold tracking-tight text-white">Salta Parkin</h1>
 
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <button
-            type="button"
-            onClick={() => loginWithGoogle()}
-            disabled={sessionStatus === "loading" || isAuthenticated}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-4 font-medium text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Ingresar con Google
-          </button>
+          {!isAuthenticated && sessionStatus !== "loading" && (
+            <button
+              type="button"
+              onClick={() => loginWithGoogle()}
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-4 font-medium text-slate-950 transition hover:bg-emerald-400"
+            >
+              Ingresar con Google
+            </button>
+          )}
 
           {isAuthenticated && (
             <Link
               href={dashboardHref}
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 font-medium text-cyan-200 transition hover:bg-cyan-500/20"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-4 font-medium text-slate-950 transition hover:bg-emerald-400"
             >
               Ir a mi panel
             </Link>
           )}
 
-          <button
-            type="button"
-            onClick={() => logout()}
-            disabled={!isAuthenticated}
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Cerrar sesion
-          </button>
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-700 px-4 font-medium text-slate-100 transition hover:bg-slate-800"
+            >
+              Cerrar sesion
+            </button>
+          )}
 
         </div>
 

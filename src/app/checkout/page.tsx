@@ -246,7 +246,7 @@ export default function CheckoutPage() {
             </label>
 
             {!paymentDone && (
-              <div className="mt-6">
+              <div className="mt-6 mx-auto max-w-sm">
                 {!brickReady && (
                   <p className="py-8 text-center text-sm text-slate-400">Cargando formulario de pago...</p>
                 )}
@@ -267,27 +267,25 @@ export default function CheckoutPage() {
                   <div className="flex-1 border-t border-slate-700" />
                 </div>
 
-                <div className="mt-4 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!plateRef.current) {
-                        setStatusMsg("Ingresa la patente primero");
-                        return;
-                      }
-                      setStatusMsg("");
-                      setCashModal(true);
-                    }}
-                    className="inline-flex h-11 w-56 items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm font-semibold text-amber-300 transition hover:bg-amber-500/20 active:scale-95"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="6" width="20" height="12" rx="2" />
-                      <circle cx="12" cy="12" r="2" />
-                      <path d="M6 12h.01M18 12h.01" />
-                    </svg>
-                    Pagar en Efectivo
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!plateRef.current) {
+                      setStatusMsg("Ingresa la patente primero");
+                      return;
+                    }
+                    setStatusMsg("");
+                    setCashModal(true);
+                  }}
+                  className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-400 text-sm font-semibold text-slate-950 transition hover:bg-amber-300 active:scale-95"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M6 12h.01M18 12h.01" />
+                  </svg>
+                  Pagar en Efectivo
+                </button>
               </div>
             )}
 

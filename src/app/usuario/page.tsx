@@ -720,8 +720,39 @@ export default function UsuarioPage() {
               )}
             </div>
 
-            {!selectedSpace && (
-              <p className="mt-3 text-xs text-slate-400">Haz click en el mapa o en un poligono para seleccionar una cuadra.</p>
+            {spaces.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-slate-500 mb-2">Zonas en el area ({spaces.length})</p>
+                <ul className="space-y-1">
+                  {spaces.map((item, idx) => (
+                    <li key={item.id || `${item.zoneId || item.name}-${idx}`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSpace(item);
+                          mapRef.current?.setCenter({ lat: item.lat, lng: item.lng });
+                          mapRef.current?.setZoom(17);
+                          setStatusMsg(`Cuadra seleccionada: ${item.name}`);
+                        }}
+                        className={`w-full rounded-md px-3 py-2 text-left text-xs transition ${
+                          selectedSpace?.id === item.id
+                            ? "bg-emerald-950/40 border border-emerald-500/50 text-emerald-300"
+                            : "border border-slate-800 text-slate-300 hover:bg-slate-800/60"
+                        }`}
+                      >
+                        <span className="font-medium">{item.name}</span>
+                        <span className="ml-2 text-slate-500">${item.ratePerHour}/h</span>
+                        <span className={`ml-2 ${getAvailabilityBadge(item).className}`}>
+                          {getAvailabilityBadge(item).label}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {spaces.length === 0 && (
+              <p className="mt-3 text-xs text-slate-400">Haz click en el mapa o busca una direccion para ver zonas.</p>
             )}
           </div>
           </div>

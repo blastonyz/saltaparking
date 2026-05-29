@@ -235,7 +235,7 @@ export default function PermisionarioPage() {
             disabled={entryLoading}
             className="inline-flex h-11 items-center rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 text-sm font-medium text-amber-300 disabled:opacity-70"
           >
-            {entryLoading ? "Marcando..." : "Marcar ingreso campo patente"}
+            {entryLoading ? "Marcando..." : "Marcar ingreso"}
           </button>
         </div>
 
