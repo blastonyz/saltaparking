@@ -23,6 +23,9 @@ type GoogleMapsApi = {
         zoom: number;
         mapTypeControl: boolean;
         streetViewControl: boolean;
+        clickableIcons?: boolean;
+        gestureHandling?: "greedy" | "cooperative" | "none" | "auto";
+        draggableCursor?: string;
       }
     ) => MapsMap;
     Marker: new (params: {
@@ -148,6 +151,7 @@ export default function UsuarioPage() {
   useEffect(() => {
     if (!mapReady || !mapContainerRef.current || !window.google) return;
     if (mapsScriptError) return;
+    if (mapRef.current) return;
 
     const center = position || { lat: -24.7829, lng: -65.4232 };
     mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
@@ -155,12 +159,47 @@ export default function UsuarioPage() {
       zoom: 15,
       mapTypeControl: false,
       streetViewControl: false,
+      clickableIcons: false,
+      gestureHandling: "greedy",
+      draggableCursor: "crosshair",
+    });
+
+    window.google.maps.event.addListener(mapRef.current, "click", (event: MapsMouseEvent) => {
+      const clickLat = event.latLng?.lat();
+      const clickLng = event.latLng?.lng();
+      if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
+
+      let nearest: Space | null = null;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      for (const item of spacesRef.current) {
+        const distance = haversineMeters(clickLat as number, clickLng as number, item.lat, item.lng);
+        if (distance < nearestDistance) {
+          nearest = item;
+          nearestDistance = distance;
+        }
+      }
+
+      if (!nearest || nearestDistance > 220) {
+        setStatusMsg("No se encontro una cuadra cercana. Acercate mas o usa la lista lateral.");
+        return;
+      }
+
+      setSelectedSpace(nearest);
+      mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
+      mapRef.current?.setZoom(17);
+      setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
     });
 
     if (position) {
       void fetchSpaces(position.lat, position.lng);
     }
   }, [mapReady, position, mapsScriptError]);
+
+  useEffect(() => {
+    if (!mapRef.current || !position) return;
+    mapRef.current.setCenter(position);
+  }, [position]);
 
   useEffect(() => {
     window.gm_authFailure = () => {
@@ -344,37 +383,6 @@ export default function UsuarioPage() {
     await fetchSpaces(lat, lng);
   }
 
-  useEffect(() => {
-    if (!mapRef.current || !window.google) return;
-
-    window.google.maps.event.addListener(mapRef.current, "click", (event: MapsMouseEvent) => {
-      const clickLat = event.latLng?.lat();
-      const clickLng = event.latLng?.lng();
-      if (!Number.isFinite(clickLat) || !Number.isFinite(clickLng)) return;
-
-      let nearest: Space | null = null;
-      let nearestDistance = Number.POSITIVE_INFINITY;
-
-      for (const item of spacesRef.current) {
-        const distance = haversineMeters(clickLat as number, clickLng as number, item.lat, item.lng);
-        if (distance < nearestDistance) {
-          nearest = item;
-          nearestDistance = distance;
-        }
-      }
-
-      if (!nearest || nearestDistance > 180) {
-        setStatusMsg("No se encontro una cuadra cercana. Acercate mas o usa la lista lateral.");
-        return;
-      }
-
-      setSelectedSpace(nearest);
-      mapRef.current?.setCenter({ lat: nearest.lat, lng: nearest.lng });
-      mapRef.current?.setZoom(17);
-      setStatusMsg(`Cuadra seleccionada: ${nearest.name}`);
-    });
-  }, [mapReady]);
-
   if (sessionStatus === "loading") {
     return <PageShell>Resolviendo sesion...</PageShell>;
   }
@@ -464,7 +472,7 @@ export default function UsuarioPage() {
             <div className="mb-3 rounded-md border border-emerald-900/60 bg-emerald-950/20 p-2">
               <p className="text-xs text-emerald-300">Seleccion actual</p>
               <p className="text-sm text-slate-100">
-                {selectedSpace ? selectedSpace.name : "Haz click en un marcador para elegir cuadra"}
+                {selectedSpace ? selectedSpace.name : "Haz click en el mapa, marcador o poligono para elegir cuadra"}
               </p>
               {selectedSpace && (
                 <Link
