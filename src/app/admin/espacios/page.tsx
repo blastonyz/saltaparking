@@ -592,7 +592,7 @@ export default function AdminEspaciosPage() {
                     : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                ðŸ“ Capturar Desde
+                Capturar Desde
               </button>
               <button
                 type="button"
@@ -603,7 +603,7 @@ export default function AdminEspaciosPage() {
                     : "border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
                 }`}
               >
-                ðŸ Capturar Hasta
+                Capturar Hasta
               </button>
             </div>
 
@@ -621,7 +621,7 @@ export default function AdminEspaciosPage() {
 
             {/* Map */}
             <div id={mapContainerId} className="h-[480px] rounded-xl border border-white/20 bg-slate-950/60" />
-            <p className="mt-2 text-[11px] text-yellow-300">PrevisualizaciÃ³n: amarillo Â· Guardadas: colores varios</p>
+            <p className="mt-2 text-[11px] text-yellow-300">Previsualización: amarillo · Guardadas: colores varios</p>
             {mapsError && <p className="mt-1 text-xs text-rose-300">{mapsError}</p>}
           </div>
           <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900/60 p-4">
@@ -667,7 +667,7 @@ export default function AdminEspaciosPage() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Calle San Martin..." className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-400 uppercase tracking-wider">DirecciÃ³n</label>
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Dirección</label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="San Martin 200-300" className="h-10 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100" />
             </div>
             <div className="flex flex-col gap-1">
