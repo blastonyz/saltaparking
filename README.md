@@ -1,3 +1,27 @@
+## 🚀 Stack Tecnológico
+
+- **Next.js 16.2.6** → Framework base, rendimiento optimizado y soporte de SSR/ISR.  
+- **React 19.2.4 + React DOM** → Capa de UI declarativa y reutilizable.  
+- **NextAuth 4.24.14 + MongoDB Adapter** → Autenticación robusta y persistente.  
+- **MongoDB 5.9.2** → Base de datos principal, optimizada para sesiones y datos dinámicos.  
+- **MercadoPago SDK 3.0.0** → Integración de pagos segura y confiable en el ecosistema local.  
+- **QRCode 1.5.4** → Generación de códigos QR para trazabilidad y accesos rápidos.  
+
+---
+
+## 🛠️ Entorno de Desarrollo
+
+- **TypeScript 5** → Tipado fuerte y mantenibilidad.  
+- **TailwindCSS 4** → Estilos modulares y productivos.  
+- **ESLint 9 + Configuración Next** → Calidad de código garantizada.  
+
+---
+ 
+# Este proyecto representa la visión de Guillermo Racuh: un frontend moderno, seguro y escalable, con autenticación, pagos y trazabilidad integrados.  
+Framework con el compilador más rápido, base de datos confiable, hosting flexible y autenticación robusta.  
+La aplicación está **MADE IN ARGENTINA** 🇦🇷.
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
